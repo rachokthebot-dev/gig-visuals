@@ -13,6 +13,8 @@
   // 30s generated bed per song, shipped with the app; see tools/render-demo.js
   const demoUrl = i => 'demo/' + T[i].id + '.mp3';
 
+  let artVariant = 0, artTimer = null;
+
   /* ---- visualizers -------------------------------------------------- */
 
   function make(kind) {
@@ -21,6 +23,7 @@
     stage.appendChild(c);
     const v = kind === 'hydra' ? GV.VizHydra(c)
       : kind === 'milkdrop' ? GV.VizMilkdrop(c)
+      : kind === 'fractal' ? GV.VizFractal(c)
       : GV.VizFlow(c);
     v.resize(Math.round(innerWidth * dpr), Math.round(innerHeight * dpr));
     vizzes[kind] = v;
@@ -93,10 +96,23 @@
     if (!v || !v.setImage) return;
     const i = song, th = T[song];
     if (!GV.Art.enabled) { v.setImage(null); return; }
-    GV.Art.load(i, th).then(img => {
+    const n = GV.Art.variantsFor(i);
+    GV.Art.load(i, th, artVariant % n).then(img => {
       // a slow loader must not stamp its image over a song or engine we've left
       if (song === i && active === v && GV.Art.enabled) v.setImage(img);
     });
+  }
+
+  /* Cycle through a song's images while it plays, so a three-minute song isn't
+     one static picture. Each change rides the same reveal the song change uses. */
+  function startArtCycle() {
+    clearInterval(artTimer);
+    artTimer = setInterval(() => {
+      if (!started || !GV.Art.enabled) return;
+      if (GV.Art.variantsFor(song) < 2) return;
+      artVariant++;
+      applyArt();
+    }, 9000);
   }
 
   function setArtStatus() {
@@ -122,6 +138,7 @@
 
   function toLanding() {
     started = false;
+    clearInterval(artTimer);
     GV.Audio.stop();
     $('hud').hidden = true;
     setSetlist(false);
@@ -180,6 +197,7 @@
     else if (k === '1') { override = 'hydra'; wake(); }
     else if (k === '2') { override = 'milkdrop'; wake(); }
     else if (k === '3') { override = 'flow'; wake(); }
+    else if (k === '4') { override = 'fractal'; wake(); }
     else if (k === '0') { override = null; wake(); }
     else if (k === 'p') { GV.Audio.togglePlay(); syncTransport(); wake(); }
     else if (k === 'm') { GV.Audio.setMuted(!GV.Audio.data.muted); syncTransport(); wake(); }
@@ -261,6 +279,7 @@
     song = 0;
     override = engine === 'auto' ? null : engine;
     select(0);
+    startArtCycle();
     frame();
   }
 

@@ -10,16 +10,19 @@ GV.Art = (function () {
   const cache = {};
   let enabled = true;
 
-  const shippedUrl = th => 'art/' + th.id + '.jpg';
+  const N = (window.GV && GV.ART_VARIANTS) || 3;
+  const shippedUrl = (th, v) => 'art/' + th.id + '-' + ((v % N + N) % N + 1) + '.jpg';
 
-  function urlFor(i, th) {
-    return local.urlFor(i) || shippedUrl(th);
+  // A local override is a single picture, so it has no variants.
+  function urlFor(i, th, v) {
+    return local.urlFor(i) || shippedUrl(th, v || 0);
   }
+  const variantsFor = i => local.urlFor(i) ? 1 : N;
 
   /* Resolves to an HTMLImageElement, or null if nothing loads — a missing
      image must leave the visualiser running, not break it. */
-  function load(i, th) {
-    const url = urlFor(i, th);
+  function load(i, th, v) {
+    const url = urlFor(i, th, v);
     if (cache[url] !== undefined) return Promise.resolve(cache[url]);
     return new Promise(res => {
       const img = new Image();
@@ -31,7 +34,7 @@ GV.Art = (function () {
   }
 
   return {
-    load, urlFor,
+    load, urlFor, variantsFor,
     isLocal: i => !!local.urlFor(i),
     nameFor: i => local.nameFor(i),
     fromFiles: (files, themes) => local.fromFiles(files, themes),

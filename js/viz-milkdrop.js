@@ -198,7 +198,7 @@ void main(){
       verts[i * 2] = (i / (N - 1)) * 2 - 1;
       verts[i * 2 + 1] = au.waveform[i] * amp;
     }
-    strokeStrip(N, c[1], 0.55 + au.level * 0.45);
+    strokeStrip(N, c[1], 0.26 + au.level * 0.26);
 
     const ringR = 0.12 + au.pulse * 0.55 + au.bass * 0.25;
     for (let i = 0; i < N; i++) {
@@ -207,7 +207,7 @@ void main(){
       verts[i * 2] = Math.cos(ang) * rr * (H / W);
       verts[i * 2 + 1] = Math.sin(ang) * rr;
     }
-    strokeStrip(N, c[2], 0.25 + au.pulse * 0.75);
+    strokeStrip(N, c[2], 0.14 + au.pulse * 0.46);
     gl.disable(gl.BLEND);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);

@@ -88,11 +88,13 @@ const ARCHETYPES = [
   }
 ];
 
-function render(theme, idx) {
-  const seed = seedFrom(theme.id);
+function render(theme, idx, variant) {
+  const seed = seedFrom(theme.id + '::' + variant);
   const rnd = prng(seed);
   const fbm = fbmFrom(noiseField(seed));
-  const arch = ARCHETYPES[idx % ARCHETYPES.length];
+  // a different composition for each variant, still offset per song so
+  // neighbouring songs never open on the same one
+  const arch = ARCHETYPES[(idx + variant) % ARCHETYPES.length];
   const params = { cx: (rnd() - 0.5) * 0.7, cy: (rnd() - 0.5) * 0.7 };
   const bg = hex(theme.bg);
   const c0 = hex(theme.palette[0]), c1 = hex(theme.palette[1]), c2 = hex(theme.palette[2]);
@@ -156,11 +158,18 @@ function png(w, h, rgb) {
 
 const dir = path.join(ROOT, 'art');
 fs.mkdirSync(dir, { recursive: true });
+const VARIANTS = 3;
+const NAMES = ['strata', 'radial', 'clouds', 'shards'];
+let count = 0;
 THEMES.forEach((th, i) => {
-  const buf = render(th, i);
-  const out = path.join(dir, th.id + '.png');
-  fs.writeFileSync(out, png(W, H, buf));
-  console.log(th.id.padEnd(20), ['strata', 'radial', 'clouds', 'shards'][i % 4].padEnd(8),
-    (fs.statSync(out).size / 1024).toFixed(0) + ' KB');
+  const kinds = [];
+  for (let v = 0; v < VARIANTS; v++) {
+    const buf = render(th, i, v);
+    const out = path.join(dir, th.id + '-' + (v + 1) + '.png');
+    fs.writeFileSync(out, png(W, H, buf));
+    kinds.push(NAMES[(i + v) % NAMES.length]);
+    count++;
+  }
+  console.log(th.id.padEnd(20), kinds.join(', '));
 });
-console.log('wrote ' + THEMES.length + ' images to art/');
+console.log('wrote ' + count + ' images to art/');

@@ -63,6 +63,12 @@
         <span class="e-desc">Every frame warps the one before it &mdash; zoom, rotate, decay &mdash; with the waveform drawn on top. The trails are the picture.</span>
         <span class="e-sw"><i style="background:#0e5f74"></i><i style="background:#39d6ff"></i><i style="background:#ff5a12"></i></span>
       </button>
+      <button class="engine" data-engine="fractal">
+        <span class="e-name">Fractal</span>
+        <span class="e-tag">Julia orbit traps</span>
+        <span class="e-desc">An escape-time Julia set whose constant drifts on the bass and whose zoom punches on the beat, coloured through orbit traps.</span>
+        <span class="e-sw"><i style="background:#39d6ff"></i><i style="background:#ff5a12"></i><i style="background:#ffd400"></i></span>
+      </button>
       <button class="engine" data-engine="flow">
         <span class="e-name">p5</span>
         <span class="e-tag">Flow field</span>
@@ -82,7 +88,7 @@
 
     <p class="hint">
       Full screen with <kbd>F</kbd>, change song with <kbd>&larr;</kbd><kbd>&rarr;</kbd>, switch engine
-      mid-song with <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>, artwork on and off with <kbd>I</kbd>. Microphone needs https or localhost.
+      mid-song with <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd>, artwork on and off with <kbd>I</kbd>. Microphone needs https or localhost.
     </p>
     <p id="boot-err" class="err" hidden></p>
   </div>
@@ -135,6 +141,7 @@
 <script src="js/viz-hydra.js"></script>
 <script src="js/viz-milkdrop.js"></script>
 <script src="js/viz-flow.js"></script>
+<script src="js/viz-fractal.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
