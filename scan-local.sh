@@ -15,3 +15,4 @@ scan() {
 
 scan tracks '\.(mp3|m4a|aac|ogg|opus|wav|webm|flac)$'
 scan my-art '\.(jpg|jpeg|png|webp|gif|avif)$'
+scan my-video '\.(mp4|m4v|mov|webm)$'

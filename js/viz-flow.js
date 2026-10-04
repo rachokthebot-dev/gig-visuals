@@ -35,7 +35,8 @@ GV.VizFlow = function (canvas) {
 
   // cover-fit so the picture fills the frame without distorting
   function drawCover(img, alpha) {
-    const ia = img.naturalWidth / img.naturalHeight, ca = W / H;
+    const wh = GV.gl.srcSize(img);
+    const ia = wh[0] / wh[1], ca = W / H;
     let w, h;
     if (ca > ia) { w = W; h = W / ia; } else { h = H; w = H * ia; }
     ctx.globalAlpha = alpha;

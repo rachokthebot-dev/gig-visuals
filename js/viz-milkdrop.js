@@ -98,32 +98,19 @@ void main(){
   const Up = { uTex: gl.getUniformLocation(post, 'uTex'), uRes: gl.getUniformLocation(post, 'uRes'), uGain: gl.getUniformLocation(post, 'uGain') };
 
   let a = null, b = null, W = 0, H = 0;
-  let imgTex = null, imgAspect = 1, imgAmt = 0, reveal = 0, lastT = 0;
+  let imgTex = null, imgSrc = null, imgAspect = 1, imgAmt = 0, reveal = 0, lastT = 0;
+  const blankTex = G.blankTexture(gl);
 
-  // a 1x1 black texture keeps the sampler bound even with no artwork loaded
-  const blankTex = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, blankTex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-  /* Pass null to clear. Non-power-of-two images are fine here: CLAMP_TO_EDGE
-     with LINEAR and no mipmaps is exactly what WebGL1 requires of them. */
-  function setImage(img) {
-    if (!img) { imgAmt = 0; return; }
+  /* Pass null to clear. Accepts an <img> or a <video>; a video is re-uploaded
+     every frame from draw(). */
+  function setImage(src) {
+    if (!src) { imgAmt = 0; imgSrc = null; return; }
     if (!imgTex) imgTex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, imgTex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-    imgAspect = img.naturalWidth / img.naturalHeight;
-    imgAmt = 1;
-    reveal = 1;
+    imgSrc = src;
+    G.upload(gl, imgTex, src);
+    const wh = G.srcSize(src);
+    imgAspect = wh[0] / wh[1];
+    imgAmt = 1; reveal = 1;
   }
 
   const N = 256;
@@ -152,6 +139,7 @@ void main(){
     const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
     reveal *= Math.exp(-dt / 1.10);
     if (reveal < 0.002) reveal = 0;
+    if (G.videoReady(imgSrc)) G.upload(gl, imgTex, imgSrc);
     const p = Object.assign({}, GV.VizMilkdrop.DEFAULTS, th.milkdrop);
     const c = th.palette.map(GV.hexToRgb);
     gl.viewport(0, 0, W, H);

@@ -39,6 +39,41 @@ GV.gl = {
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   },
 
+  /* One place for image/video texture upload. A <video> source has to be
+     re-uploaded every frame while it plays, which is the only real difference
+     between a still and a clip as far as the engines are concerned. */
+  blankTexture(gl) {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  },
+
+  isVideo(src) { return !!src && typeof HTMLVideoElement !== 'undefined' && src instanceof HTMLVideoElement; },
+
+  srcSize(src) {
+    return this.isVideo(src)
+      ? [src.videoWidth || 1, src.videoHeight || 1]
+      : [src.naturalWidth || src.width || 1, src.naturalHeight || src.height || 1];
+  },
+
+  // non-power-of-two safe: CLAMP_TO_EDGE + LINEAR, no mipmaps
+  upload(gl, tex, src) {
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  },
+
+  videoReady(src) { return this.isVideo(src) && src.readyState >= 2 && !src.paused; },
+
   target(gl, w, h) {
     const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);

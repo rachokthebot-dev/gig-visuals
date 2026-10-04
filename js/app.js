@@ -24,6 +24,7 @@
     const v = kind === 'hydra' ? GV.VizHydra(c)
       : kind === 'milkdrop' ? GV.VizMilkdrop(c)
       : kind === 'fractal' ? GV.VizFractal(c)
+      : kind === 'three' ? GV.VizThree(c)
       : GV.VizFlow(c);
     v.resize(Math.round(innerWidth * dpr), Math.round(innerHeight * dpr));
     vizzes[kind] = v;
@@ -198,6 +199,7 @@
     else if (k === '2') { override = 'milkdrop'; wake(); }
     else if (k === '3') { override = 'flow'; wake(); }
     else if (k === '4') { override = 'fractal'; wake(); }
+    else if (k === '5') { override = 'three'; wake(); }
     else if (k === '0') { override = null; wake(); }
     else if (k === 'p') { GV.Audio.togglePlay(); syncTransport(); wake(); }
     else if (k === 'm') { GV.Audio.setMuted(!GV.Audio.data.muted); syncTransport(); wake(); }

@@ -82,26 +82,16 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
   const copy = G.program(gl, COPY);
   const quad = G.quad(gl);
   let a = null, b = null, W = 0, H = 0;
-  let imgTex = null, imgAmt = 0, reveal = 0, lastT = 0;
+  let imgTex = null, imgSrc = null, imgAmt = 1 && 0, imgAspect = 1, reveal = 0, lastT = 0;
+  const blankTex = G.blankTexture(gl);
 
-  const blankTex = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, blankTex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-  function setImage(img) {
-    if (!img) { imgAmt = 0; return; }
+  function setImage(src) {
+    if (!src) { imgAmt = 0; imgSrc = null; return; }
     if (!imgTex) imgTex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, imgTex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    imgSrc = src;
+    G.upload(gl, imgTex, src);
+    const wh = G.srcSize(src);
+    imgAspect = wh[0] / wh[1];
     imgAmt = 1; reveal = 1;
   }
   const U = {};
@@ -123,6 +113,7 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
     const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
     reveal *= Math.exp(-dt / 1.10);
     if (reveal < 0.002) reveal = 0;
+    if (G.videoReady(imgSrc)) G.upload(gl, imgTex, imgSrc);
     const p = Object.assign({}, GV.VizHydra.DEFAULTS, th.hydra);
     const c = th.palette.map(GV.hexToRgb);
     gl.viewport(0, 0, W, H);

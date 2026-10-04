@@ -69,32 +69,21 @@ void main(){
   const prog = G.program(gl, FS);
   const quad = G.quad(gl);
   let W = 0, H = 0;
-  let imgTex = null, imgAmt = 0, imgAspect = 1, reveal = 0, lastT = 0;
+  let imgTex = null, imgSrc = null, imgAmt = 0, imgAspect = 1, reveal = 0, lastT = 0;
 
   const U = {};
   for (const n of ['uRes', 'uTime', 'uBass', 'uMid', 'uHigh', 'uPulse', 'uLevel',
     'uC0', 'uC1', 'uC2', 'uSeed', 'uZoom', 'uIter', 'uShip', 'uTrap', 'uSpin', 'uCRad',
     'uImg', 'uImgAmt', 'uImgReveal', 'uImgScale']) U[n] = gl.getUniformLocation(prog, n);
+  const blankTex = G.blankTexture(gl);
 
-  const blankTex = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, blankTex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-  function setImage(img) {
-    if (!img) { imgAmt = 0; return; }
+  function setImage(src) {
+    if (!src) { imgAmt = 0; imgSrc = null; return; }
     if (!imgTex) imgTex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, imgTex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-    imgAspect = img.naturalWidth / img.naturalHeight;
+    imgSrc = src;
+    G.upload(gl, imgTex, src);
+    const wh = G.srcSize(src);
+    imgAspect = wh[0] / wh[1];
     imgAmt = 1; reveal = 1;
   }
 
@@ -105,6 +94,7 @@ void main(){
     const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
     reveal *= Math.exp(-dt / 1.10);
     if (reveal < 0.002) reveal = 0;
+    if (G.videoReady(imgSrc)) G.upload(gl, imgTex, imgSrc);
 
     const p = Object.assign({}, GV.VizFractal.DEFAULTS, th.fractal);
     const c = th.palette.map(GV.hexToRgb);
