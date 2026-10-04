@@ -45,7 +45,7 @@ GV.VizFlow = function (canvas) {
 
   function draw(au, th, t) {
     const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
-    reveal *= Math.exp(-dt / 0.55);
+    reveal *= Math.exp(-dt / 1.10);
     if (reveal < 0.002) reveal = 0;
     const p = Object.assign({}, GV.VizFlow.DEFAULTS, th.flow);
     if (parts.length !== p.count) seed(p.count);
@@ -58,7 +58,7 @@ GV.VizFlow = function (canvas) {
     ctx.globalAlpha = 1;
 
     // after the trail wash, before the particles, so they ride over it
-    if (image) drawCover(image, Math.min(0.85, 0.07 + reveal * 0.7 + au.pulse * 0.10));
+    if (image) drawCover(image, Math.min(0.90, 0.18 + reveal * 0.6 + au.pulse * 0.12));
 
     const cx = W / 2, cy = H / 2;
     const beat = au.beatPhase < lastPhase;

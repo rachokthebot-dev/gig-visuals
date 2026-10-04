@@ -57,7 +57,7 @@ void main(){
   // of the picture rather than out of the oscillator.
   if (uImgAmt > 0.0) {
     vec3 img = texture2D(uImg, clamp(k * 0.55 + 0.5, 0.0, 1.0)).rgb;
-    float m = clamp(uImgAmt * (0.32 + uImgReveal * 0.55 + uPulse * 0.22), 0.0, 0.92);
+    float m = clamp(uImgAmt * (0.48 + uImgReveal * 0.45 + uPulse * 0.20), 0.0, 0.94);
     col = mix(col, img * (0.55 + e1 * 1.2 + uPulse * 0.5), m);
   }
 
@@ -121,7 +121,7 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
 
   function draw(au, th, t) {
     const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
-    reveal *= Math.exp(-dt / 0.55);
+    reveal *= Math.exp(-dt / 1.10);
     if (reveal < 0.002) reveal = 0;
     const p = Object.assign({}, GV.VizHydra.DEFAULTS, th.hydra);
     const c = th.palette.map(GV.hexToRgb);

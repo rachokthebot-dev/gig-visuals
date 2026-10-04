@@ -55,11 +55,11 @@ void main(){
     // Weight by the picture's own luminance so its bright features seed the
     // warp and its flat dark areas don't wash the whole frame.
     float luma = dot(img, vec3(0.299, 0.587, 0.114));
-    float inj = uImgAmt * norm * (0.004 + uPulse * 0.045);
-    prev += img * (0.18 + 0.82 * luma) * inj;
+    float inj = uImgAmt * norm * (0.022 + uPulse * 0.055);
+    prev += img * (0.35 + 0.65 * luma) * inj;
     // On a song change, pull the buffer hard toward the picture so it is
     // actually legible, then let the warp dissolve it as the reveal decays.
-    prev = mix(prev, img, uImgReveal * 0.30);
+    prev = mix(prev, img, uImgReveal * 0.45);
   }
 
   gl_FragColor = vec4(prev, 1.0);
@@ -150,7 +150,7 @@ void main(){
 
   function draw(au, th, t) {
     const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
-    reveal *= Math.exp(-dt / 0.55);
+    reveal *= Math.exp(-dt / 1.10);
     if (reveal < 0.002) reveal = 0;
     const p = Object.assign({}, GV.VizMilkdrop.DEFAULTS, th.milkdrop);
     const c = th.palette.map(GV.hexToRgb);
