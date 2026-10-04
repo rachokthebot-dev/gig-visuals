@@ -15,6 +15,7 @@ uniform float uKaleid, uOscFreq, uModAmt, uRotSpeed, uFeedback;
 uniform sampler2D uPrev;
 uniform sampler2D uImg;
 uniform float uImgAmt, uImgReveal;
+uniform vec2  uImgScale;
 
 void main(){
   vec2 fuv = gl_FragCoord.xy / uRes;
@@ -53,12 +54,21 @@ void main(){
            + uC1 * e2 * 0.35
            + uC2 * e3 * 0.55;
 
-  // src(image) through the same kaleid coordinates: the symmetry is built out
-  // of the picture rather than out of the oscillator.
+  // Sampling through the raw kaleid coordinates only ever reached a 30-degree
+  // wedge of the right-hand half of the texture, so a photograph was never
+  // recognisable here. Take a proper cover-fit sample of the whole frame, and
+  // get the symmetry from a mirror-tiled second sample that also uses the
+  // entire image rather than a sliver of it.
   if (uImgAmt > 0.0) {
-    vec3 img = texture2D(uImg, clamp(k * 0.55 + 0.5, 0.0, 1.0)).rgb;
+    vec2 fv = (fuv - 0.5) * uImgScale + 0.5;
+    vec3 imgFlat = texture2D(uImg, clamp(fv, 0.0, 1.0)).rgb;
+
+    vec2 kv = abs(fract(k * uImgScale * 0.5) * 2.0 - 1.0);
+    vec3 imgKal = texture2D(uImg, kv).rgb;
+
+    vec3 img = mix(imgFlat, imgKal, 0.35);
     float m = clamp(uImgAmt * (0.48 + uImgReveal * 0.45 + uPulse * 0.20), 0.0, 0.94);
-    col = mix(col, img * (0.55 + e1 * 1.2 + uPulse * 0.5), m);
+    col = mix(col, img * (0.90 + e1 * 0.8 + uPulse * 0.4), m);
   }
 
   col *= smoothstep(1.25, 0.04, r);          // hard falloff to true black
@@ -82,7 +92,7 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
   const copy = G.program(gl, COPY);
   const quad = G.quad(gl);
   let a = null, b = null, W = 0, H = 0;
-  let imgTex = null, imgSrc = null, imgAmt = 1 && 0, imgAspect = 1, reveal = 0, lastT = 0;
+  let imgTex = null, imgSrc = null, imgAmt = 0, imgAspect = 1, reveal = 0, lastT = 0;
   const blankTex = G.blankTexture(gl);
 
   function setImage(src) {
@@ -97,7 +107,7 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
   const U = {};
   for (const n of ['uRes', 'uTime', 'uBass', 'uMid', 'uHigh', 'uPulse', 'uBeat', 'uLevel',
     'uC0', 'uC1', 'uC2', 'uKaleid', 'uOscFreq', 'uModAmt', 'uRotSpeed', 'uFeedback', 'uPrev',
-    'uImg', 'uImgAmt', 'uImgReveal']) {
+    'uImg', 'uImgAmt', 'uImgReveal', 'uImgScale']) {
     U[n] = gl.getUniformLocation(prog, n);
   }
   const Uc = { uTex: gl.getUniformLocation(copy, 'uTex'), uRes: gl.getUniformLocation(copy, 'uRes') };
@@ -143,6 +153,9 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
 
     gl.uniform1f(U.uImgAmt, imgAmt);
     gl.uniform1f(U.uImgReveal, reveal);
+    const ca = W / H;
+    gl.uniform2f(U.uImgScale, ca > imgAspect ? 1 : ca / imgAspect,
+                              ca > imgAspect ? imgAspect / ca : 1);
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, imgTex || blankTex);
     gl.uniform1i(U.uImg, 1);

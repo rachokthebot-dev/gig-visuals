@@ -57,10 +57,11 @@ void main(){
 
   // the artwork rides the same trap field, so it reads as part of the fractal
   if (uImgAmt > 0.0) {
-    vec2 iuv = clamp((uv * 0.62) * uImgScale + 0.5, 0.0, 1.0);
+    // cover-fit the whole frame; uv*0.62 cropped to the middle of the picture
+    vec2 iuv = clamp((gl_FragCoord.xy / uRes - 0.5) * uImgScale + 0.5, 0.0, 1.0);
     vec3 img = texture2D(uImg, iuv).rgb;
     float m = clamp(uImgAmt * (0.34 + uImgReveal * 0.5 + uPulse * 0.18), 0.0, 0.9);
-    col = mix(col, img * (0.5 + gRing * 1.3 + esc * 0.6), m);
+    col = mix(col, img * (0.85 + gRing * 1.0 + esc * 0.5), m);
   }
 
   gl_FragColor = vec4(col, 1.0);
