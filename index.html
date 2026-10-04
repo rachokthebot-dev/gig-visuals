@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Block Party — Gig Visuals</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="boot">
+  <div class="boot-card">
+    <h1>Block Party</h1>
+    <p class="sub">Live visuals, driven by the room</p>
+
+    <p class="lede">
+      Point a laptop at the PA and this listens. It splits the mic into frequency
+      bands, finds the onsets, and locks a tempo by autocorrelating the flux
+      envelope &mdash; no click track, no MIDI, nothing to cue. Each of the eight
+      songs carries its own palette and its own parameters, so the picture changes
+      with the set, not just with the volume.
+    </p>
+
+    <div class="src-toggle" role="group" aria-label="Audio source">
+      <button id="src-mic" class="seg on" aria-pressed="true">Microphone</button>
+      <button id="src-demo" class="seg" aria-pressed="false">Preview (no mic)</button>
+    </div>
+
+    <div class="engines">
+      <button class="engine" data-engine="auto">
+        <span class="e-name">Auto</span>
+        <span class="e-tag">Follow the set list</span>
+        <span class="e-desc">Each song picks the engine it was written for. This is the one to run at the gig.</span>
+        <span class="e-sw"><i style="background:#2bb4c8"></i><i style="background:#ff6a00"></i><i style="background:#b14cff"></i></span>
+      </button>
+      <button class="engine" data-engine="hydra">
+        <span class="e-name">Hydra</span>
+        <span class="e-tag">Shader chain</span>
+        <span class="e-desc">osc &rarr; kaleid &rarr; modulate &rarr; rotate, fed back into itself. Symmetrical, hard-edged, snaps on the beat.</span>
+        <span class="e-sw"><i style="background:#1a0a00"></i><i style="background:#ff6a00"></i><i style="background:#ffd400"></i></span>
+      </button>
+      <button class="engine" data-engine="milkdrop">
+        <span class="e-name">MilkDrop</span>
+        <span class="e-tag">Feedback warp</span>
+        <span class="e-desc">Every frame warps the one before it &mdash; zoom, rotate, decay &mdash; with the waveform drawn on top. The trails are the picture.</span>
+        <span class="e-sw"><i style="background:#0e5f74"></i><i style="background:#39d6ff"></i><i style="background:#ff5a12"></i></span>
+      </button>
+      <button class="engine" data-engine="flow">
+        <span class="e-name">p5</span>
+        <span class="e-tag">Flow field</span>
+        <span class="e-desc">A thousand particles riding a noise field over a spectrum ring, kicked outward on every detected beat.</span>
+        <span class="e-sw"><i style="background:#ff2e88"></i><i style="background:#b14cff"></i><i style="background:#8fb6d9"></i></span>
+      </button>
+    </div>
+
+    <p class="hint">
+      Full screen with <kbd>F</kbd>, change song with <kbd>&larr;</kbd><kbd>&rarr;</kbd>, switch engine
+      mid-song with <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>. Microphone needs https or localhost.
+    </p>
+    <p id="boot-err" class="err" hidden></p>
+  </div>
+
+<div id="hud" hidden>
+  <div class="hud-left">
+    <div class="track"><span id="h-index">1</span><span class="sep">/</span><span id="h-total">8</span></div>
+    <div class="titles">
+      <div id="h-title">—</div>
+      <div id="h-artist">—</div>
+    </div>
+  </div>
+  <div class="hud-right">
+    <div class="meter"><div id="h-beat" class="beat"></div></div>
+    <div class="bpm"><span id="h-bpm">--</span><small>BPM</small></div>
+    <div class="conf"><div id="h-conf"></div></div>
+    <div id="h-viz" class="viz">—</div>
+    <div id="h-src" class="src">MIC</div>
+  </div>
+</div>
+
+<div id="setlist" hidden>
+  <h2>Set list</h2>
+  <ol id="setlist-items"></ol>
+  <div class="keys">
+    <span><kbd>←</kbd><kbd>→</kbd> song</span>
+    <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> engine</span>
+    <span><kbd>0</kbd> auto</span>
+    <span><kbd>S</kbd> set list</span>
+    <span><kbd>H</kbd> hud</span>
+    <span><kbd>F</kbd> full screen</span>
+  </div>
+</div>
+
+<script src="js/themes.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/gl.js"></script>
+<script src="js/viz-hydra.js"></script>
+<script src="js/viz-milkdrop.js"></script>
+<script src="js/viz-flow.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
