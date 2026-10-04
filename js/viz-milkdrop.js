@@ -11,6 +11,7 @@ GV.VizMilkdrop = function (canvas) {
   const WARP = G.LIB + `
 uniform vec2  uRes;
 uniform float uTime, uZoom, uRot, uWarp, uDecay, uBass, uMid, uHigh, uPulse;
+uniform float uSx, uSy, uDx, uDy, uEcho, uEchoScale, uHue, uSolar;
 uniform vec3  uC0, uC2;
 uniform sampler2D uPrev;
 uniform sampler2D uImg;
@@ -33,11 +34,46 @@ void main(){
   ) * w * 0.035;
 
   c = rot(c, rotA);
-  c *= zoom;
+  // per-axis scale rather than one uniform zoom: stretching an axis turns the
+  // tunnel into drifting bands or falling curtains, which is most of what makes
+  // one preset look unlike another
+  c *= vec2(zoom * uSx, zoom * uSy);
+  c += vec2(uDx, uDy) * 0.01;
   c.x /= uRes.x / uRes.y;
 
   vec3 prev = texture2D(uPrev, c + 0.5).rgb;
+
+  // a mirrored, scaled copy of the last frame folded back in
+  if (uEcho > 0.0) {
+    vec2 e = (uv - 0.5);
+    e.x = -e.x;
+    e *= uEchoScale;
+    e.x *= uRes.x / uRes.y;
+    e = rot(e, -rotA * 1.5);
+    e.x /= uRes.x / uRes.y;
+    prev = mix(prev, texture2D(uPrev, e + 0.5).rgb, uEcho * 0.5);
+  }
   prev *= uDecay - uHigh * 0.012;
+
+  // slow hue rotation so a long song drifts across its palette
+  if (uHue != 0.0) {
+    float a = uHue * uTime;
+    float ca = cos(a), sa = sin(a);
+    // luminance-preserving hue rotation. The YIQ-derived variant has
+    // coefficients above 1 and amplifies on every pass through the feedback.
+    mat3 hr = mat3(
+      0.213 + 0.787 * ca - 0.213 * sa, 0.213 - 0.213 * ca + 0.143 * sa, 0.213 - 0.213 * ca - 0.787 * sa,
+      0.715 - 0.715 * ca - 0.715 * sa, 0.715 + 0.285 * ca + 0.140 * sa, 0.715 - 0.715 * ca + 0.715 * sa,
+      0.072 - 0.072 * ca + 0.928 * sa, 0.072 - 0.072 * ca - 0.283 * sa, 0.072 + 0.928 * ca + 0.072 * sa);
+    prev = clamp(hr * prev, 0.0, 1.0);
+  }
+
+  // beat-driven solarize: a colour inversion above a threshold, which punches
+  // without moving anything
+  if (uSolar > 0.0) {
+    float amt = uSolar * uPulse;
+    prev = mix(prev, abs(1.0 - prev * 1.6), amt * 0.5);
+  }
   // slow hue drift between the theme's darkest and brightest colour
   prev += (uC0 * 0.012 + uC2 * 0.006 * uPulse);
 
@@ -92,7 +128,8 @@ void main(){
 
   const Uw = {};
   for (const n of ['uRes', 'uTime', 'uZoom', 'uRot', 'uWarp', 'uDecay', 'uBass', 'uMid', 'uHigh',
-    'uPulse', 'uC0', 'uC2', 'uPrev', 'uImg', 'uImgAmt', 'uImgScale', 'uImgReveal'])
+    'uPulse', 'uC0', 'uC2', 'uPrev', 'uImg', 'uImgAmt', 'uImgScale', 'uImgReveal',
+    'uSx', 'uSy', 'uDx', 'uDy', 'uEcho', 'uEchoScale', 'uHue', 'uSolar'])
     Uw[n] = gl.getUniformLocation(warp, n);
   const Ul = { uCol: gl.getUniformLocation(line, 'uCol'), uA: gl.getUniformLocation(line, 'uA') };
   const Up = { uTex: gl.getUniformLocation(post, 'uTex'), uRes: gl.getUniformLocation(post, 'uRes'), uGain: gl.getUniformLocation(post, 'uGain') };
@@ -136,6 +173,7 @@ void main(){
   }
 
   function draw(au, th, t) {
+    if (!a || !b) return;          // resize() has not run yet
     const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
     reveal *= Math.exp(-dt / 1.10);
     if (reveal < 0.002) reveal = 0;
@@ -153,6 +191,10 @@ void main(){
     gl.uniform1f(Uw.uZoom, p.zoom);
     gl.uniform1f(Uw.uRot, p.rot);
     gl.uniform1f(Uw.uWarp, p.warp);
+    gl.uniform1f(Uw.uSx, p.sx); gl.uniform1f(Uw.uSy, p.sy);
+    gl.uniform1f(Uw.uDx, p.dx); gl.uniform1f(Uw.uDy, p.dy);
+    gl.uniform1f(Uw.uEcho, p.echo); gl.uniform1f(Uw.uEchoScale, p.echoScale);
+    gl.uniform1f(Uw.uHue, p.hue); gl.uniform1f(Uw.uSolar, p.solar);
     gl.uniform1f(Uw.uDecay, p.decay);
     gl.uniform1f(Uw.uBass, au.bass);
     gl.uniform1f(Uw.uMid, au.mid);
@@ -183,20 +225,69 @@ void main(){
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
     const amp = p.waveAmp * (0.35 + au.level * 2.2);
-    for (let i = 0; i < N; i++) {
-      verts[i * 2] = (i / (N - 1)) * 2 - 1;
-      verts[i * 2 + 1] = au.waveform[i] * amp;
-    }
-    strokeStrip(N, c[1], 0.26 + au.level * 0.26);
+    const ar = H / W;
+    const wf = au.waveform;
+    const thick = p.waveThick;
 
-    const ringR = 0.12 + au.pulse * 0.55 + au.bass * 0.25;
-    for (let i = 0; i < N; i++) {
-      const ang = (i / (N - 1)) * Math.PI * 2;
-      const rr = ringR * (1 + au.waveform[i] * 0.35);
-      verts[i * 2] = Math.cos(ang) * rr * (H / W);
-      verts[i * 2 + 1] = Math.sin(ang) * rr;
+    // Shape matters more than any amount of zoom tuning: the same feedback
+    // field reads completely differently depending on what is drawn into it.
+    switch (p.wave | 0) {
+      case 1: {                                    // circle
+        for (let i = 0; i < N; i++) {
+          const a = (i / (N - 1)) * Math.PI * 2;
+          const rr = 0.42 + wf[i] * amp * 1.4;
+          verts[i * 2] = Math.cos(a) * rr * ar;
+          verts[i * 2 + 1] = Math.sin(a) * rr;
+        }
+        break;
+      }
+      case 2: {                                    // double spiral
+        for (let i = 0; i < N; i++) {
+          const t2 = i / (N - 1);
+          const a = t2 * Math.PI * 6 + (i % 2 ? Math.PI : 0);
+          const rr = (0.08 + t2 * 0.42) * (1 + wf[i] * amp * 1.1);
+          verts[i * 2] = Math.cos(a) * rr * ar;
+          verts[i * 2 + 1] = Math.sin(a) * rr;
+        }
+        break;
+      }
+      case 3: {                                    // radial spokes
+        for (let i = 0; i < N; i++) {
+          const spoke = Math.floor(i / 8);
+          const a = (spoke / (N / 8)) * Math.PI * 2;
+          const inner = (i % 8) / 7;
+          const rr = 0.10 + inner * (0.22 + Math.abs(wf[i]) * amp * 2.2);
+          verts[i * 2] = Math.cos(a) * rr * ar;
+          verts[i * 2 + 1] = Math.sin(a) * rr;
+        }
+        break;
+      }
+      case 4: {                                    // scope: wave against a delayed copy
+        for (let i = 0; i < N; i++) {
+          verts[i * 2] = wf[i] * amp * 1.6 * ar;
+          verts[i * 2 + 1] = wf[(i + 12) % N] * amp * 1.6;
+        }
+        break;
+      }
+      default: {                                   // horizontal line
+        for (let i = 0; i < N; i++) {
+          verts[i * 2] = (i / (N - 1)) * 2 - 1;
+          verts[i * 2 + 1] = wf[i] * amp;
+        }
+      }
     }
-    strokeStrip(N, c[2], 0.14 + au.pulse * 0.46);
+    strokeStrip(N, c[1], (0.26 + au.level * 0.26) * thick);
+
+    if (p.ring > 0) {
+      const ringR = 0.12 + au.pulse * 0.55 + au.bass * 0.25;
+      for (let i = 0; i < N; i++) {
+        const a = (i / (N - 1)) * Math.PI * 2;
+        const rr = ringR * (1 + wf[i] * 0.35);
+        verts[i * 2] = Math.cos(a) * rr * ar;
+        verts[i * 2 + 1] = Math.sin(a) * rr;
+      }
+      strokeStrip(N, c[2], (0.14 + au.pulse * 0.46) * p.ring);
+    }
     gl.disable(gl.BLEND);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -227,4 +318,8 @@ void main(){
   return { canvas, resize, draw, reset, setImage, label: 'MilkDrop — feedback warp' };
 };
 
-GV.VizMilkdrop.DEFAULTS = { zoom: 0.994, rot: 0.003, warp: 0.5, decay: 0.965, waveAmp: 0.3 };
+GV.VizMilkdrop.DEFAULTS = {
+  zoom: 0.994, rot: 0.003, warp: 0.5, decay: 0.965, waveAmp: 0.3,
+  sx: 1, sy: 1, dx: 0, dy: 0, echo: 0, echoScale: 0.62, hue: 0, solar: 0,
+  wave: 0, waveThick: 1, ring: 1
+};
