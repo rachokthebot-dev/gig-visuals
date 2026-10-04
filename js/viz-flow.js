@@ -5,6 +5,7 @@ window.GV = window.GV || {};
 GV.VizFlow = function (canvas) {
   const ctx = canvas.getContext('2d');
   let W = 0, H = 0, parts = [], lastPhase = 0;
+  let image = null, reveal = 0, lastT = 0;
 
   function noise(x, y, t) {
     // cheap smooth field: sum of a few sines, good enough and fast
@@ -30,7 +31,22 @@ GV.VizFlow = function (canvas) {
     if (parts.length) seed(parts.length);
   }
 
+  function setImage(img) { image = img; if (img) reveal = 1; }
+
+  // cover-fit so the picture fills the frame without distorting
+  function drawCover(img, alpha) {
+    const ia = img.naturalWidth / img.naturalHeight, ca = W / H;
+    let w, h;
+    if (ca > ia) { w = W; h = W / ia; } else { h = H; w = H * ia; }
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+    ctx.globalAlpha = 1;
+  }
+
   function draw(au, th, t) {
+    const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
+    reveal *= Math.exp(-dt / 0.55);
+    if (reveal < 0.002) reveal = 0;
     const p = Object.assign({}, GV.VizFlow.DEFAULTS, th.flow);
     if (parts.length !== p.count) seed(p.count);
 
@@ -40,6 +56,9 @@ GV.VizFlow = function (canvas) {
     ctx.globalAlpha = p.trail * (1.1 - au.level * 0.4);
     ctx.fillRect(0, 0, W, H);
     ctx.globalAlpha = 1;
+
+    // after the trail wash, before the particles, so they ride over it
+    if (image) drawCover(image, Math.min(0.85, 0.07 + reveal * 0.7 + au.pulse * 0.10));
 
     const cx = W / 2, cy = H / 2;
     const beat = au.beatPhase < lastPhase;
@@ -121,7 +140,7 @@ GV.VizFlow = function (canvas) {
     if (parts.length) seed(parts.length);
   }
 
-  return { canvas, resize, draw, reset, label: 'p5 — flow field' };
+  return { canvas, resize, draw, reset, setImage, label: 'p5 — flow field' };
 };
 
 /* Any engine can be forced onto any theme, so each carries defaults for the

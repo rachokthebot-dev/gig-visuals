@@ -37,6 +37,7 @@
     v.reset(T[song]);
     v.canvas.classList.add('on');
     $('h-viz').textContent = v.label;
+    applyArt();            // a newly-switched-to engine has no image yet
   }
 
   function resizeAll() {
@@ -86,14 +87,15 @@
   /* ---- artwork --------------------------------------------------------- */
 
   // Only the MilkDrop engine takes a texture seed; the others ignore artwork.
+  // All three engines take artwork; each uses it differently.
   function applyArt() {
-    const v = vizzes.milkdrop;
+    const v = active;
     if (!v || !v.setImage) return;
     const i = song, th = T[song];
     if (!GV.Art.enabled) { v.setImage(null); return; }
     GV.Art.load(i, th).then(img => {
-      // a slow loader must not stamp its image over a song we've since left
-      if (song === i && GV.Art.enabled) v.setImage(img);
+      // a slow loader must not stamp its image over a song or engine we've left
+      if (song === i && active === v && GV.Art.enabled) v.setImage(img);
     });
   }
 

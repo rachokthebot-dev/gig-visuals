@@ -15,6 +15,7 @@ uniform vec3  uC0, uC2;
 uniform sampler2D uPrev;
 uniform sampler2D uImg;
 uniform float uImgAmt;      // 0 when there is no image
+uniform float uImgReveal;   // 1 on song change, decaying to 0
 uniform vec2  uImgScale;    // cover-fit correction for the canvas aspect
 
 void main(){
@@ -54,8 +55,11 @@ void main(){
     // Weight by the picture's own luminance so its bright features seed the
     // warp and its flat dark areas don't wash the whole frame.
     float luma = dot(img, vec3(0.299, 0.587, 0.114));
-    float inj = uImgAmt * norm * (0.0016 + uPulse * 0.020);
+    float inj = uImgAmt * norm * (0.004 + uPulse * 0.045);
     prev += img * (0.18 + 0.82 * luma) * inj;
+    // On a song change, pull the buffer hard toward the picture so it is
+    // actually legible, then let the warp dissolve it as the reveal decays.
+    prev = mix(prev, img, uImgReveal * 0.30);
   }
 
   gl_FragColor = vec4(prev, 1.0);
@@ -88,13 +92,13 @@ void main(){
 
   const Uw = {};
   for (const n of ['uRes', 'uTime', 'uZoom', 'uRot', 'uWarp', 'uDecay', 'uBass', 'uMid', 'uHigh',
-    'uPulse', 'uC0', 'uC2', 'uPrev', 'uImg', 'uImgAmt', 'uImgScale'])
+    'uPulse', 'uC0', 'uC2', 'uPrev', 'uImg', 'uImgAmt', 'uImgScale', 'uImgReveal'])
     Uw[n] = gl.getUniformLocation(warp, n);
   const Ul = { uCol: gl.getUniformLocation(line, 'uCol'), uA: gl.getUniformLocation(line, 'uA') };
   const Up = { uTex: gl.getUniformLocation(post, 'uTex'), uRes: gl.getUniformLocation(post, 'uRes'), uGain: gl.getUniformLocation(post, 'uGain') };
 
   let a = null, b = null, W = 0, H = 0;
-  let imgTex = null, imgAspect = 1, imgAmt = 0;
+  let imgTex = null, imgAspect = 1, imgAmt = 0, reveal = 0, lastT = 0;
 
   // a 1x1 black texture keeps the sampler bound even with no artwork loaded
   const blankTex = gl.createTexture();
@@ -119,6 +123,7 @@ void main(){
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     imgAspect = img.naturalWidth / img.naturalHeight;
     imgAmt = 1;
+    reveal = 1;
   }
 
   const N = 256;
@@ -144,6 +149,9 @@ void main(){
   }
 
   function draw(au, th, t) {
+    const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
+    reveal *= Math.exp(-dt / 0.55);
+    if (reveal < 0.002) reveal = 0;
     const p = Object.assign({}, GV.VizMilkdrop.DEFAULTS, th.milkdrop);
     const c = th.palette.map(GV.hexToRgb);
     gl.viewport(0, 0, W, H);
@@ -173,6 +181,7 @@ void main(){
     const sy = canvasAspect > imgAspect ? imgAspect / canvasAspect : 1;
     gl.uniform2f(Uw.uImgScale, sx, sy);
     gl.uniform1f(Uw.uImgAmt, imgAmt);
+    gl.uniform1f(Uw.uImgReveal, reveal);
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, imgTex || blankTex);
     gl.uniform1i(Uw.uImg, 1);

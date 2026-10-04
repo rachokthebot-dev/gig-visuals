@@ -13,6 +13,8 @@ uniform float uTime, uBass, uMid, uHigh, uPulse, uBeat, uLevel;
 uniform vec3  uC0, uC1, uC2;
 uniform float uKaleid, uOscFreq, uModAmt, uRotSpeed, uFeedback;
 uniform sampler2D uPrev;
+uniform sampler2D uImg;
+uniform float uImgAmt, uImgReveal;
 
 void main(){
   vec2 fuv = gl_FragCoord.xy / uRes;
@@ -51,6 +53,14 @@ void main(){
            + uC1 * e2 * 0.35
            + uC2 * e3 * 0.55;
 
+  // src(image) through the same kaleid coordinates: the symmetry is built out
+  // of the picture rather than out of the oscillator.
+  if (uImgAmt > 0.0) {
+    vec3 img = texture2D(uImg, clamp(k * 0.55 + 0.5, 0.0, 1.0)).rgb;
+    float m = clamp(uImgAmt * (0.32 + uImgReveal * 0.55 + uPulse * 0.22), 0.0, 0.92);
+    col = mix(col, img * (0.55 + e1 * 1.2 + uPulse * 0.5), m);
+  }
+
   col *= smoothstep(1.25, 0.04, r);          // hard falloff to true black
   col *= 0.30 + 1.25 * uLevel;
   col += uC2 * uPulse * exp(-r * 3.0) * 1.2;
@@ -72,9 +82,32 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
   const copy = G.program(gl, COPY);
   const quad = G.quad(gl);
   let a = null, b = null, W = 0, H = 0;
+  let imgTex = null, imgAmt = 0, reveal = 0, lastT = 0;
+
+  const blankTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, blankTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+  function setImage(img) {
+    if (!img) { imgAmt = 0; return; }
+    if (!imgTex) imgTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, imgTex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    imgAmt = 1; reveal = 1;
+  }
   const U = {};
   for (const n of ['uRes', 'uTime', 'uBass', 'uMid', 'uHigh', 'uPulse', 'uBeat', 'uLevel',
-    'uC0', 'uC1', 'uC2', 'uKaleid', 'uOscFreq', 'uModAmt', 'uRotSpeed', 'uFeedback', 'uPrev']) {
+    'uC0', 'uC1', 'uC2', 'uKaleid', 'uOscFreq', 'uModAmt', 'uRotSpeed', 'uFeedback', 'uPrev',
+    'uImg', 'uImgAmt', 'uImgReveal']) {
     U[n] = gl.getUniformLocation(prog, n);
   }
   const Uc = { uTex: gl.getUniformLocation(copy, 'uTex'), uRes: gl.getUniformLocation(copy, 'uRes') };
@@ -87,6 +120,9 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
   }
 
   function draw(au, th, t) {
+    const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
+    reveal *= Math.exp(-dt / 0.55);
+    if (reveal < 0.002) reveal = 0;
     const p = Object.assign({}, GV.VizHydra.DEFAULTS, th.hydra);
     const c = th.palette.map(GV.hexToRgb);
     gl.viewport(0, 0, W, H);
@@ -114,6 +150,13 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
     gl.bindTexture(gl.TEXTURE_2D, b.tex);
     gl.uniform1i(U.uPrev, 0);
 
+    gl.uniform1f(U.uImgAmt, imgAmt);
+    gl.uniform1f(U.uImgReveal, reveal);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, imgTex || blankTex);
+    gl.uniform1i(U.uImg, 1);
+    gl.activeTexture(gl.TEXTURE0);
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, a.fbo);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -139,7 +182,7 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
-  return { canvas, resize, draw, reset, label: 'Hydra — shader chain' };
+  return { canvas, resize, draw, reset, setImage, label: 'Hydra — shader chain' };
 };
 
 GV.VizHydra.DEFAULTS = { kaleid: 5, oscFreq: 12, modAmt: 0.5, rotSpeed: 0.1, feedback: 0.86 };
