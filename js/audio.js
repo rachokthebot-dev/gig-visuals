@@ -45,6 +45,7 @@ GV.Audio = (function () {
     el.addEventListener('play', () => { out.playing = true; });
     el.addEventListener('pause', () => { out.playing = false; });
     el.addEventListener('ended', () => { if (endedCb) endedCb(); });
+    el.addEventListener('error', () => { if (el.getAttribute('src')) fallbackToSynth(); });
     elNode = ctx.createMediaElementSource(el);   // only legal once per element
     elNode.connect(analyser);
     elNode.connect(outGain);
@@ -95,16 +96,17 @@ GV.Audio = (function () {
 
   /* Tracks fall back to the synth bed per song, so a half-filled tracks folder
      still plays all the way through the set. */
-  function useTrack(url, th) {
+  function useTrack(url, th, loop) {
     theme = th; prior = th.bpm || 120;
     ensure();
     if (url) {
+      el.loop = !!loop;
       if (synth) { synth.stop(); synth.node.disconnect(); synth = null; }
       if (micNode) { micNode.disconnect(); micNode = null; }
       if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
       el.src = url;
       el.currentTime = 0;
-      el.play().catch(() => {});
+      el.play().catch(() => fallbackToSynth());
     } else {
       el.pause(); el.removeAttribute('src'); el.load();
       if (!synth) { synth = GV.Synth(ctx); synth.node.connect(analyser); synth.node.connect(outGain); synth.start(th); }
@@ -115,6 +117,17 @@ GV.Audio = (function () {
     resetDetector();
     lastT = performance.now() / 1000;
     ctx.resume();
+  }
+
+  /* A missing or undecodable file must not leave the set silent. */
+  function fallbackToSynth() {
+    if (!theme || synth) return;
+    el.pause(); el.removeAttribute('src'); el.load();
+    synth = GV.Synth(ctx);
+    synth.node.connect(analyser);
+    synth.node.connect(outGain);
+    synth.start(theme);
+    out.playing = true;
   }
 
   function setSong(th) {

@@ -10,6 +10,9 @@
   let active = null;
   let dpr = 1, started = false, t0 = 0;
 
+  // 30s generated bed per song, shipped with the app; see tools/render-demo.js
+  const demoUrl = i => 'demo/' + T[i].id + '.mp3';
+
   /* ---- visualizers -------------------------------------------------- */
 
   function make(kind) {
@@ -68,7 +71,7 @@
     const th = T[song];
     document.body.style.background = th.bg;
     GV.Audio.setSong(th);
-    if (started && source === 'track') GV.Audio.useTrack(GV.Tracks.urlFor(song), th);
+    if (started && source !== 'mic') openFor(song, th);
     $('h-index').textContent = song + 1;
     $('h-title').textContent = th.title;
     $('h-artist').textContent = th.artist;
@@ -172,7 +175,7 @@
   const NOTES = {
     mic: 'The gig setting — listens to the room and reacts to whatever you play.',
     track: 'Plays your own files, analysed exactly like the mic would be.',
-    synth: 'A drum, bass and guitar bed per song, at that song’s tempo and key. Nothing to load.'
+    synth: 'A 30-second bed per song — drums, bass and guitar at that song’s tempo and key. Ships with the app.'
   };
 
   function renderTrackList() {
@@ -232,11 +235,15 @@
     frame();
   }
 
+  // demo clips loop; a real track running out moves the set on, the way it would live
+  function openFor(i, th) {
+    if (source === 'synth') return GV.Audio.useTrack(demoUrl(i), th, true);
+    return GV.Audio.useTrack(GV.Tracks.urlFor(i) || demoUrl(i), th, !GV.Tracks.urlFor(i));
+  }
+
   async function openSource() {
-    const th = T[0];
     if (source === 'mic') return GV.Audio.useMic();
-    if (source === 'synth') return GV.Audio.useSynth(th);
-    return GV.Audio.useTrack(GV.Tracks.urlFor(0), th);
+    return openFor(0, T[0]);
   }
 
   document.querySelectorAll('.engine').forEach(btn => {

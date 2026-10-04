@@ -32,7 +32,7 @@ Pick one on the landing page:
 | ------ | ------------ |
 | **Microphone** | The gig setting. Listens to the room; never routed to the speakers, so it can't howl. |
 | **My tracks** | Plays your own local audio files, analysed exactly like the mic would be. Nothing is uploaded or published — see below. |
-| **Demo audio** | A drum, bass and guitar bed per song, at that song's tempo and key. Nothing to load, so the shared link is never silent. |
+| **Demo audio** | A 30-second clip per song, shipped with the app (`demo/*.mp3`, ~350&nbsp;KB each). Drums, bass and guitar at that song's tempo and key. Loops, so the shared link is never silent. |
 
 All three run through the same analyser, so the visuals react to real sound in every mode.
 
@@ -112,5 +112,25 @@ the preferred engine, a parameter block per engine, and the `audio` block (root 
 and 16-step drum/bass/guitar patterns) that the demo bed plays. No other file needs touching
 to re-skin or re-score a song.
 
-The demo beds are generic drum-and-power-chord patterns in each song's key and tempo —
-they're a backing bed, not the songs. Use **My tracks** for the real recordings.
+## The demo clips
+
+`demo/*.mp3` are generated, not sampled — generic drum, bass and power-chord patterns in
+each song's key and tempo. They're a backing bed, not the songs, which is why they can ship
+publicly. For the real recordings use **My tracks**; those stay on your machine.
+
+Regenerate them with:
+
+    node tools/render-demo.js
+    cd demo && for f in *.wav; do \
+      ffmpeg -y -i "$f" -af loudnorm=I=-16:TP=-1.5:LRA=11 \
+             -codec:a libmp3lame -b:a 96k -ac 1 "${f%.wav}.mp3"; done && rm *.wav
+
+`tools/render-demo.js` reads the patterns straight out of `js/themes.js`, so editing a
+song's `audio` block and re-running is all it takes. The loudness pass matters: peak
+normalising alone left the sparse arrangements far quieter than the dense ones, and
+visual brightness tracks level.
+
+Detection against the shipped clips lands within 1–2 BPM on all eight. Confidence is
+lower on *Man in the Box* (~0.3) because its half-time pattern puts a snare only on the
+three, which makes the autocorrelation genuinely ambiguous — the reference tempo carries
+it to the right answer.
