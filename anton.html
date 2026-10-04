@@ -13,7 +13,7 @@
 
 <div id="boot">
   <div class="boot-card">
-    <nav class="setnav"><a href="./">Block Party</a><a href="anton.html" class="on">Anton 10.2026</a><a href="tempo.html">Tempo Lock</a></nav>
+    <nav class="setnav"><a href="./">Block Party</a><a href="anton.html" class="on">Anton 10.2026</a></nav>
 
     <h1 id="set-name">&nbsp;</h1>
     <p class="sub" id="set-tagline">&nbsp;</p>
@@ -76,6 +76,12 @@
         <span class="e-desc">A real 3D scene. The song's artwork becomes the environment map, so the metal carries true reflections of the photograph.</span>
         <span class="e-sw"><i style="background:#8fb6d9"></i><i style="background:#d98824"></i><i style="background:#2bb4c8"></i></span>
       </button>
+      <button class="engine" data-engine="sdf">
+        <span class="e-name">SDF</span>
+        <span class="e-tag">Raymarched terrain</span>
+        <span class="e-desc">A landscape under haze, defined entirely by maths rather than geometry. At full presence the photograph's brightness becomes the terrain itself.</span>
+        <span class="e-sw"><i style="background:#2bb4c8"></i><i style="background:#7fd3a8"></i><i style="background:#ffd98a"></i></span>
+      </button>
       <button class="engine" data-engine="flow">
         <span class="e-name">p5</span>
         <span class="e-tag">Flow field</span>
@@ -95,7 +101,7 @@
 
     <p class="hint">
       Full screen with <kbd>F</kbd>, change song with <kbd>&larr;</kbd><kbd>&rarr;</kbd>, switch engine
-      mid-song with <kbd>1</kbd>&ndash;<kbd>5</kbd>, artwork on and off with <kbd>I</kbd>, its presence with <kbd>V</kbd>. Microphone needs https or localhost.
+      mid-song with <kbd>1</kbd>&ndash;<kbd>6</kbd>, artwork on and off with <kbd>I</kbd>, its presence with <kbd>V</kbd>. Microphone needs https or localhost.
     </p>
     <p id="boot-err" class="err" hidden></p>
   </div>
@@ -152,6 +158,7 @@
 <script src="js/viz-flow.js"></script>
 <script src="js/viz-fractal.js"></script>
 <script src="js/viz-three.js"></script>
+<script src="js/viz-sdf.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

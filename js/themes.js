@@ -16,6 +16,7 @@ GV.THEMES = [
     note: 'Nevermind pool — chlorine blue and bleached yellow, drifting underwater',
     bg: '#04141c',
     palette: ['#0e5f74', '#2bb4c8', '#e3d14a'],
+    sdf:      { amp: 1.2, freq: 0.42, fog: 0.085, speed: 1.8, sharp: 0.15 },
     three:    { shape: 'ico',   metal: 0.75, rough: 0.28, disp: 1.1, spin: 0.7 },
     fractal:  { seed: [-0.79, 0.15], zoom: 1.45, iter: 95, ship: false, trap: 0.75, spin: 0.018, cRad: 0.035 },
     // F — mid-tempo rock backbeat, clean verse into a dirty chorus
@@ -33,6 +34,7 @@ GV.THEMES = [
     note: 'Smash-era SoCal — scorched orange on black, hard snap on the beat',
     bg: '#0a0300',
     palette: ['#1a0a00', '#ff6a00', '#ffd400'],
+    sdf:      { amp: 2.2, freq: 0.70, fog: 0.040, speed: 4.0, sharp: 0.75 },
     three:    { shape: 'knot',  metal: 0.95, rough: 0.12, disp: 0.7, spin: 2.2 },
     fractal:  { seed: [-0.40, 0.60], zoom: 1.15, iter: 70, ship: true,  trap: 0.55, spin: 0.085, cRad: 0.055 },
     // E phrygian — fast punk, that flattened second doing the heavy lifting
@@ -50,6 +52,7 @@ GV.THEMES = [
     note: 'Candy-violet 90s alt — sugar-rush particles, pink over deep purple',
     bg: '#120618',
     palette: ['#ff2e88', '#b14cff', '#ffd1ec'],
+    sdf:      { amp: 1.5, freq: 0.50, fog: 0.060, speed: 2.6, sharp: 0.25 },
     three:    { shape: 'torus', metal: 0.70, rough: 0.30, disp: 1.3, spin: 1.2 },
     fractal:  { seed: [0.285, 0.013], zoom: 1.70, iter: 125, ship: false, trap: 0.90, spin: 0.040, cRad: 0.030 },
     // A — grunge-pop, lands hard on the four
@@ -67,6 +70,7 @@ GV.THEMES = [
     note: 'Facelift sludge — bile green, and the only theme that zooms inward',
     bg: '#0a0d07',
     palette: ['#1d2a10', '#7f9c2a', '#c9d98a'],
+    sdf:      { amp: 1.0, freq: 0.60, fog: 0.110, speed: 1.4, sharp: 0.50 },
     three:    { shape: 'ico',   metal: 0.55, rough: 0.52, disp: 0.6, spin: 0.4 },
     fractal:  { seed: [-0.835, -0.232], zoom: 1.05, iter: 80, ship: true,  trap: 0.45, spin: 0.012, cRad: 0.020 },
     // E — half-time sludge, snare only on the three
@@ -84,6 +88,7 @@ GV.THEMES = [
     note: 'Appetite — desert gold and blood red, slow sepia bloom',
     bg: '#0d0603',
     palette: ['#2a1206', '#d98824', '#c0202a'],
+    sdf:      { amp: 2.0, freq: 0.38, fog: 0.045, speed: 2.2, sharp: 0.60 },
     three:    { shape: 'torus', metal: 0.92, rough: 0.16, disp: 0.9, spin: 0.8 },
     fractal:  { seed: [-0.702, -0.384], zoom: 1.50, iter: 105, ship: false, trap: 0.80, spin: 0.025, cRad: 0.040 },
     // D major — cleanest of the set, almost no drive
@@ -101,6 +106,7 @@ GV.THEMES = [
     note: 'Rubberneck lake at night — black water, moon-silver, one red eye',
     bg: '#04060f',
     palette: ['#1b3a6b', '#8fb6d9', '#d42030'],
+    sdf:      { amp: 1.1, freq: 0.45, fog: 0.095, speed: 1.6, sharp: 0.20 },
     three:    { shape: 'ico',   metal: 0.88, rough: 0.22, disp: 1.5, spin: 0.6 },
     fractal:  { seed: [-0.80, 0.156], zoom: 1.30, iter: 110, ship: false, trap: 0.62, spin: 0.015, cRad: 0.028 },
     // F# — driving eighths on the root, no let-up
@@ -118,6 +124,7 @@ GV.THEMES = [
     note: '80s chrome and steel — cold blue links with a warm amber highlight',
     bg: '#050a10',
     palette: ['#0d2030', '#4f9fd1', '#ffb347'],
+    sdf:      { amp: 1.8, freq: 0.80, fog: 0.050, speed: 2.8, sharp: 0.80 },
     three:    { shape: 'knot',  metal: 1.00, rough: 0.08, disp: 0.5, spin: 1.1 },
     fractal:  { seed: [0.30, 0.50], zoom: 1.85, iter: 90, ship: false, trap: 1.05, spin: 0.055, cRad: 0.045 },
     // A — jangly and clean, the 80s outlier
@@ -135,6 +142,7 @@ GV.THEMES = [
     note: 'Ice and fire — a cyan glacier torn open by molten orange',
     bg: '#02080c',
     palette: ['#0b3a4a', '#39d6ff', '#ff5a12'],
+    sdf:      { amp: 2.6, freq: 0.55, fog: 0.065, speed: 3.4, sharp: 0.85 },
     three:    { shape: 'ico',   metal: 0.85, rough: 0.20, disp: 1.8, spin: 1.9 },
     fractal:  { seed: [-0.745, 0.113], zoom: 1.20, iter: 130, ship: true,  trap: 0.70, spin: 0.070, cRad: 0.050 },
     // F# — galloping kick under driving eighths
@@ -154,7 +162,8 @@ GV.ENGINES = {
   milkdrop: { name: 'MilkDrop', tag: 'Feedback warp' },
   flow:     { name: 'p5',       tag: 'Flow field' },
   fractal:  { name: 'Fractal',  tag: 'Julia orbit traps' },
-  three:    { name: 'Three',    tag: 'PBR environment' }
+  three:    { name: 'Three',    tag: 'PBR environment' },
+  sdf:      { name: 'SDF',      tag: 'Raymarched terrain' }
 };
 
 GV.hexToRgb = function (hex) {
