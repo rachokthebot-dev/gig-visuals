@@ -32,7 +32,7 @@ Pick one on the landing page:
 | ------ | ------------ |
 | **Microphone** | The gig setting. Listens to the room; never routed to the speakers, so it can't howl. |
 | **My tracks** | Plays your own local audio files, analysed exactly like the mic would be. Nothing is uploaded or published — see below. |
-| **Demo audio** | A 30-second clip per song, shipped with the app (`demo/*.mp3`, ~350&nbsp;KB each). Drums, bass and guitar at that song's tempo and key. Loops, so the shared link is never silent. |
+| **Demo audio** | A 30-second stereo clip per song, shipped with the app (`demo/*.mp3`, ~470&nbsp;KB each). Drums, bass and guitar at that song's tempo and key. Loops, so the shared link is never silent. |
 
 All three run through the same analyser, so the visuals react to real sound in every mode.
 
@@ -130,7 +130,29 @@ song's `audio` block and re-running is all it takes. The loudness pass matters: 
 normalising alone left the sparse arrangements far quieter than the dense ones, and
 visual brightness tracks level.
 
-Detection against the shipped clips lands within 1–2 BPM on all eight. Confidence is
-lower on *Man in the Box* (~0.3) because its half-time pattern puts a snare only on the
-three, which makes the autocorrelation genuinely ambiguous — the reference tempo carries
-it to the right answer.
+### Making them sound played rather than programmed
+
+Oscillators through a clipper sound like oscillators through a clipper. What moves a
+synthesised rock bed toward sounding performed, roughly in order of effect:
+
+- **Double-tracked guitars.** Each chord is rendered as two independent takes with
+  separate detuning and pick timing, panned hard left and right. Measured channel
+  correlation is 0.57–0.77; a single take panned wide stays at 1.0 and sounds flat.
+- **A cabinet, not a lowpass.** Highpass at 95 Hz, presence lift at 2.6 kHz, a scooped
+  450 Hz, then two poles rolling off above ~6 kHz. That curve is most of "guitar".
+- **Asymmetric clipping**, so the distortion generates even harmonics as well as odd.
+- **Metallic hats** — six inharmonic squares, the classic recipe — instead of filtered
+  white noise, which always just sounds like filtered white noise.
+- **A room.** A Schroeder reverb, detuned per channel, fed mostly from the snare.
+- **Humanisation** — a few ms of timing scatter and real velocity variation per hit.
+
+Two things worth knowing about the result:
+
+Detection lands within 1–2 BPM on all eight clips, but *confidence* is lower than it was
+against the rigid version (0.2–0.9 rather than 0.3–0.9). The humanisation is the cause,
+and that is the correct trade: a metronomic grid autocorrelates beautifully and sounds
+like a drum machine. A real band scores lower too. *Man in the Box* sits lowest because
+its half-time pattern puts a snare only on the three, which is genuinely ambiguous.
+
+And the honest limit: this is still synthesis. It should read as a decent programmed
+rehearsal demo, not as a recording. For the actual songs, use **My tracks**.
