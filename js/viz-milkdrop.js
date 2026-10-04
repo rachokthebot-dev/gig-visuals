@@ -13,6 +13,9 @@ uniform vec2  uRes;
 uniform float uTime, uZoom, uRot, uWarp, uDecay, uBass, uMid, uHigh, uPulse;
 uniform vec3  uC0, uC2;
 uniform sampler2D uPrev;
+uniform sampler2D uImg;
+uniform float uImgAmt;      // 0 when there is no image
+uniform vec2  uImgScale;    // cover-fit correction for the canvas aspect
 
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
@@ -36,6 +39,25 @@ void main(){
   prev *= uDecay - uHigh * 0.012;
   // slow hue drift between the theme's darkest and brightest colour
   prev += (uC0 * 0.012 + uC2 * 0.006 * uPulse);
+
+  // Seed the feedback buffer with the artwork. Because the buffer decays by
+  // uDecay every frame, a small per-frame injection reaches a steady state of
+  // roughly inj/(1-uDecay) — so this stays small on purpose, and the beat
+  // re-forms the image just as the warp is pulling the last one apart.
+  if (uImgAmt > 0.0) {
+    vec2 iuv = (uv - 0.5) * uImgScale + 0.5;
+    vec3 img = texture2D(uImg, iuv).rgb;
+    // Normalise against this song's decay: the buffer settles at inj/(1-uDecay),
+    // and uDecay runs 0.94-0.98 across the set, which would otherwise make the
+    // artwork three times stronger on some songs than others.
+    float norm = (1.0 - uDecay) * 22.0;
+    // Weight by the picture's own luminance so its bright features seed the
+    // warp and its flat dark areas don't wash the whole frame.
+    float luma = dot(img, vec3(0.299, 0.587, 0.114));
+    float inj = uImgAmt * norm * (0.0016 + uPulse * 0.020);
+    prev += img * (0.18 + 0.82 * luma) * inj;
+  }
+
   gl_FragColor = vec4(prev, 1.0);
 }`;
 
@@ -65,12 +87,40 @@ void main(){
   const lineBuf = gl.createBuffer();
 
   const Uw = {};
-  for (const n of ['uRes', 'uTime', 'uZoom', 'uRot', 'uWarp', 'uDecay', 'uBass', 'uMid', 'uHigh', 'uPulse', 'uC0', 'uC2', 'uPrev'])
+  for (const n of ['uRes', 'uTime', 'uZoom', 'uRot', 'uWarp', 'uDecay', 'uBass', 'uMid', 'uHigh',
+    'uPulse', 'uC0', 'uC2', 'uPrev', 'uImg', 'uImgAmt', 'uImgScale'])
     Uw[n] = gl.getUniformLocation(warp, n);
   const Ul = { uCol: gl.getUniformLocation(line, 'uCol'), uA: gl.getUniformLocation(line, 'uA') };
   const Up = { uTex: gl.getUniformLocation(post, 'uTex'), uRes: gl.getUniformLocation(post, 'uRes'), uGain: gl.getUniformLocation(post, 'uGain') };
 
   let a = null, b = null, W = 0, H = 0;
+  let imgTex = null, imgAspect = 1, imgAmt = 0;
+
+  // a 1x1 black texture keeps the sampler bound even with no artwork loaded
+  const blankTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, blankTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+  /* Pass null to clear. Non-power-of-two images are fine here: CLAMP_TO_EDGE
+     with LINEAR and no mipmaps is exactly what WebGL1 requires of them. */
+  function setImage(img) {
+    if (!img) { imgAmt = 0; return; }
+    if (!imgTex) imgTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, imgTex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    imgAspect = img.naturalWidth / img.naturalHeight;
+    imgAmt = 1;
+  }
+
   const N = 256;
   const verts = new Float32Array(N * 2);
 
@@ -116,6 +166,18 @@ void main(){
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, b.tex);
     gl.uniform1i(Uw.uPrev, 0);
+
+    // cover-fit: crop the longer axis rather than squashing the picture
+    const canvasAspect = W / H;
+    const sx = canvasAspect > imgAspect ? 1 : canvasAspect / imgAspect;
+    const sy = canvasAspect > imgAspect ? imgAspect / canvasAspect : 1;
+    gl.uniform2f(Uw.uImgScale, sx, sy);
+    gl.uniform1f(Uw.uImgAmt, imgAmt);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, imgTex || blankTex);
+    gl.uniform1i(Uw.uImg, 1);
+    gl.activeTexture(gl.TEXTURE0);
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, a.fbo);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 
@@ -164,7 +226,7 @@ void main(){
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
-  return { canvas, resize, draw, reset, label: 'MilkDrop — feedback warp' };
+  return { canvas, resize, draw, reset, setImage, label: 'MilkDrop — feedback warp' };
 };
 
 GV.VizMilkdrop.DEFAULTS = { zoom: 0.994, rot: 0.003, warp: 0.5, decay: 0.965, waveAmp: 0.3 };

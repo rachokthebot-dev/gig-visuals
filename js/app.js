@@ -77,9 +77,29 @@
     $('h-artist').textContent = th.artist;
     show(currentKind());
     active.reset(th);
+    applyArt();
     renderSetlist();
     syncTransport();
     wake();
+  }
+
+  /* ---- artwork --------------------------------------------------------- */
+
+  // Only the MilkDrop engine takes a texture seed; the others ignore artwork.
+  function applyArt() {
+    const v = vizzes.milkdrop;
+    if (!v || !v.setImage) return;
+    const i = song, th = T[song];
+    if (!GV.Art.enabled) { v.setImage(null); return; }
+    GV.Art.load(i, th).then(img => {
+      // a slow loader must not stamp its image over a song we've since left
+      if (song === i && GV.Art.enabled) v.setImage(img);
+    });
+  }
+
+  function setArtStatus() {
+    const n = GV.Art.localCount();
+    $('art-status').textContent = n ? n + ' of ' + T.length + ' from your images' : 'generated set';
   }
 
   /* ---- transport ------------------------------------------------------ */
@@ -161,6 +181,7 @@
     else if (k === '0') { override = null; wake(); }
     else if (k === 'p') { GV.Audio.togglePlay(); syncTransport(); wake(); }
     else if (k === 'm') { GV.Audio.setMuted(!GV.Audio.data.muted); syncTransport(); wake(); }
+    else if (k === 'i') { GV.Art.enabled = !GV.Art.enabled; applyArt(); wake(); }
     else if (k === 's') setSetlist($('setlist').hidden);
     else if (k === 'h') $('hud').hidden = !$('hud').hidden;
     else if (k === 'f') {
@@ -208,6 +229,12 @@
   $('src-mic').onclick = () => setSource('mic');
   $('src-track').onclick = () => setSource('track');
   $('src-synth').onclick = () => setSource('synth');
+
+  $('art-input').onchange = e => {
+    GV.Art.fromFiles(e.target.files, T);
+    setArtStatus();
+    if (started) applyArt();
+  };
 
   $('file-input').onchange = e => {
     const n = GV.Tracks.fromFiles(e.target.files, T);
@@ -264,5 +291,7 @@
   GV.Audio.onEnded(() => { if (started && source === 'track') select(song + 1); });
 
   setSource('mic');
+  setArtStatus();
   GV.Tracks.fromFolder(T).then(n => { if (n) { setSource('track'); renderTrackList(); } });
+  GV.Art.fromFolder(T).then(n => { if (n) { setArtStatus(); if (started) applyArt(); } });
 })();
