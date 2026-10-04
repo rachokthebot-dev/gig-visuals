@@ -26,7 +26,22 @@
 
     <div class="src-toggle" role="group" aria-label="Audio source">
       <button id="src-mic" class="seg on" aria-pressed="true">Microphone</button>
-      <button id="src-demo" class="seg" aria-pressed="false">Preview (no mic)</button>
+      <button id="src-track" class="seg" aria-pressed="false">My tracks</button>
+      <button id="src-synth" class="seg" aria-pressed="false">Demo audio</button>
+    </div>
+
+    <p id="src-note" class="src-note">The gig setting — listens to the room and reacts to whatever you play.</p>
+
+    <div id="track-panel" hidden>
+      <label class="file-btn">
+        <input id="file-input" type="file" accept="audio/*" multiple>
+        <span>Choose audio files&hellip;</span>
+      </label>
+      <p class="file-hint">
+        Your files stay on this machine &mdash; nothing is uploaded or published. They're matched
+        to songs by filename. Any song without a file falls back to the demo bed.
+      </p>
+      <ul id="track-list"></ul>
     </div>
 
     <div class="engines">
@@ -62,9 +77,17 @@
     </p>
     <p id="boot-err" class="err" hidden></p>
   </div>
+</div>
 
 <div id="hud" hidden>
   <div class="hud-left">
+    <div class="transport">
+      <button id="c-back" title="Back to the landing page (Esc)" aria-label="Back to the landing page">&#9099;</button>
+      <button id="c-prev" title="Previous song (&larr;)" aria-label="Previous song">&#9664;&#9664;</button>
+      <button id="c-play" title="Play / pause (P)" aria-label="Play or pause">&#9646;&#9646;</button>
+      <button id="c-next" title="Next song (&rarr;)" aria-label="Next song">&#9654;&#9654;</button>
+      <button id="c-mute" title="Mute audio (M)" aria-label="Mute audio">&#9834;</button>
+    </div>
     <div class="track"><span id="h-index">1</span><span class="sep">/</span><span id="h-total">8</span></div>
     <div class="titles">
       <div id="h-title">—</div>
@@ -94,6 +117,8 @@
 </div>
 
 <script src="js/themes.js"></script>
+<script src="js/synth.js"></script>
+<script src="js/tracks.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/gl.js"></script>
 <script src="js/viz-hydra.js"></script>

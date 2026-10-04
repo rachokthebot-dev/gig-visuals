@@ -7,6 +7,7 @@ pick an engine, hit full screen. No click track, no MIDI, nothing to cue.
 
 Open it on the laptop that drives the projector, allow the microphone, press `F`.
 No install, no build step, no dependencies — it also runs offline from a local copy.
+Not near a PA? Pick **Demo audio** and it plays its own bed.
 
 ## The three engines
 
@@ -23,10 +24,41 @@ thing is one offline folder and every song can theme them.
 
 Every song defines parameters for all three, so any engine can carry the whole set.
 
+## Audio sources
+
+Pick one on the landing page:
+
+| Source | What it does |
+| ------ | ------------ |
+| **Microphone** | The gig setting. Listens to the room; never routed to the speakers, so it can't howl. |
+| **My tracks** | Plays your own local audio files, analysed exactly like the mic would be. Nothing is uploaded or published — see below. |
+| **Demo audio** | A drum, bass and guitar bed per song, at that song's tempo and key. Nothing to load, so the shared link is never silent. |
+
+All three run through the same analyser, so the visuals react to real sound in every mode.
+
+### Using your own files
+
+Two ways, both local only:
+
+- **Choose audio files…** on the landing page. Files are matched to songs by filename —
+  messy `yt-dlp` names like `Nirvana - Smells Like Teen Spirit (Official Music Video).webm`
+  match fine. Nothing is uploaded; the browser reads them straight off disk.
+- **Drop them in `./tracks/`** and run `./scan-tracks.sh`. The app picks them up on load.
+  `tracks/` is gitignored and never published.
+
+Any song without a file falls back to the demo bed, so a half-filled folder still plays
+the whole set. A track running out advances to the next song.
+
 ## Controls
 
-`←` `→` `space` song · `1` `2` `3` engine · `0` auto · `S` set list · `H` hide HUD · `F` full screen.
+On screen, bottom left: back to the landing page, previous, play/pause, next, mute.
+
+`←` `→` `space` song · `1` `2` `3` engine · `0` auto · `P` play/pause · `M` mute ·
+`S` set list · `H` hide HUD · `F` full screen · `Esc` landing page.
 Clicking a row in the set list jumps to that song.
+
+Mute silences the speakers only — the analyser sits upstream, so the visuals keep
+reacting while muted.
 
 ## The set
 
@@ -68,11 +100,17 @@ detection gets better immediately — they only steer the octave, nothing else.
     ./run.sh          # http://localhost:8777
 
 Serve over `localhost` or https; browsers refuse microphone access from `file://`.
-**Preview (no mic)** runs a synthetic beat at each song's reference tempo, so you can
-check the themes with no audio at all — useful for picking looks before rehearsal.
+
+    mkdir tracks && cp ~/Music/blockparty/*.mp3 tracks/ && ./scan-tracks.sh
+
+…and the app will play your own files on the next load.
 
 ## Changing the look
 
-Everything visual is in `js/themes.js` — one entry per song: three palette colours, a
-background, the preferred engine, and a parameter block per engine. No other file needs
-touching to re-skin a song.
+Everything is in `js/themes.js` — one entry per song: three palette colours, a background,
+the preferred engine, a parameter block per engine, and the `audio` block (root note, drive,
+and 16-step drum/bass/guitar patterns) that the demo bed plays. No other file needs touching
+to re-skin or re-score a song.
+
+The demo beds are generic drum-and-power-chord patterns in each song's key and tempo —
+they're a backing bed, not the songs. Use **My tracks** for the real recordings.

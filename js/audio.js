@@ -1,27 +1,147 @@
-/* Mic capture -> band energies, spectral-flux onsets, autocorrelation tempo. */
+/* One analysis path, three sources.
+   - mic     : the room, at the gig
+   - track   : the user's own local file, via an <audio> element
+   - synth   : the built-in per-song bed, so the shared link is never silent
+   Only track and synth reach the speakers; routing the mic there would howl. */
 window.GV = window.GV || {};
 
 GV.Audio = (function () {
   const FFT = 2048;
-  const HIST = 384;            // flux history frames (~6.4s at 60fps)
+  const HIST = 384;            // flux frames (~6.4s at 60fps)
   const MIN_BPM = 60, MAX_BPM = 200;
 
-  let ctx = null, analyser = null, stream = null;
-  let freq = null, time = null, prevMag = null;
+  let ctx = null, analyser = null, outGain = null;
+  let stream = null, micNode = null, elNode = null, synth = null, el = null;
+  let freq = null, timeBuf = null, prevMag = null;
   let fluxHist = new Float32Array(HIST), fluxIdx = 0, fluxFilled = 0;
-  let frameDt = 1 / 60, lastT = 0;
+  let frameDt = 1 / 60, lastT = 0, tempoTick = 0;
   let lastOnset = -1e9, beatPhase = 0, pulse = 0;
-  let bpm = 0, bpmConf = 0, period = 0.5;
-  let prior = 120;
-  let demo = false, demoT = 0;
+  let bpm = 0, bpmConf = 0, period = 0.5, prior = 120;
+  let theme = null, endedCb = null;
 
   const out = {
-    running: false, demo: false,
+    running: false, mode: 'mic', muted: false, playing: false,
     level: 0, bass: 0, lowMid: 0, mid: 0, high: 0,
     flux: 0, bpm: 0, bpmConf: 0, beatPhase: 0, pulse: 0,
     spectrum: new Float32Array(128),
     waveform: new Float32Array(256)
   };
+
+  function ensure() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = FFT;
+    analyser.smoothingTimeConstant = 0.6;
+    outGain = ctx.createGain();
+    outGain.gain.value = 1;
+    outGain.connect(ctx.destination);
+    freq = new Uint8Array(analyser.frequencyBinCount);
+    timeBuf = new Float32Array(analyser.fftSize);
+    prevMag = new Float32Array(analyser.frequencyBinCount);
+    el = new Audio();
+    el.crossOrigin = 'anonymous';
+    el.preload = 'auto';
+    el.addEventListener('play', () => { out.playing = true; });
+    el.addEventListener('pause', () => { out.playing = false; });
+    el.addEventListener('ended', () => { if (endedCb) endedCb(); });
+    elNode = ctx.createMediaElementSource(el);   // only legal once per element
+    elNode.connect(analyser);
+    elNode.connect(outGain);
+  }
+
+  /* Seed from the song's reference tempo rather than zero: detection needs ~3s
+     of history, and a dead beat pulse between songs is very visible at a gig.
+     Confidence starts at 0 and only rises once the autocorrelation agrees. */
+  function resetDetector() {
+    fluxIdx = 0; fluxFilled = 0; fluxHist.fill(0);
+    if (prevMag) prevMag.fill(0);
+    bpm = prior; period = 60 / prior; bpmConf = 0; pulse = 0; beatPhase = 0;
+  }
+
+  function detach() {
+    if (micNode) { micNode.disconnect(); micNode = null; }
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    if (synth) { synth.stop(); synth.node.disconnect(); synth = null; }
+    if (el) { el.pause(); el.removeAttribute('src'); el.load(); }
+    out.playing = false;
+  }
+
+  async function useMic() {
+    ensure(); detach();
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    });
+    micNode = ctx.createMediaStreamSource(stream);
+    micNode.connect(analyser);                   // deliberately not to outGain
+    out.mode = 'mic'; out.running = true;
+    resetDetector();
+    lastT = performance.now() / 1000;
+    await ctx.resume();
+  }
+
+  function useSynth(th) {
+    theme = th; prior = th.bpm || 120;
+    ensure(); detach();
+    synth = GV.Synth(ctx);
+    synth.node.connect(analyser);
+    synth.node.connect(outGain);
+    synth.start(th);
+    out.mode = 'synth'; out.running = true; out.playing = true;
+    resetDetector();
+    lastT = performance.now() / 1000;
+    ctx.resume();
+  }
+
+  /* Tracks fall back to the synth bed per song, so a half-filled tracks folder
+     still plays all the way through the set. */
+  function useTrack(url, th) {
+    theme = th; prior = th.bpm || 120;
+    ensure();
+    if (url) {
+      if (synth) { synth.stop(); synth.node.disconnect(); synth = null; }
+      if (micNode) { micNode.disconnect(); micNode = null; }
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      el.src = url;
+      el.currentTime = 0;
+      el.play().catch(() => {});
+    } else {
+      el.pause(); el.removeAttribute('src'); el.load();
+      if (!synth) { synth = GV.Synth(ctx); synth.node.connect(analyser); synth.node.connect(outGain); synth.start(th); }
+      else synth.setSong(th);
+      out.playing = true;
+    }
+    out.mode = 'track'; out.running = true;
+    resetDetector();
+    lastT = performance.now() / 1000;
+    ctx.resume();
+  }
+
+  function setSong(th) {
+    theme = th;
+    prior = th.bpm || 120;
+    if (synth) synth.setSong(th);
+    resetDetector();
+  }
+
+  function togglePlay() {
+    if (out.mode === 'mic') return;
+    if (el && el.src && !el.paused) { el.pause(); return; }
+    if (el && el.src) { el.play().catch(() => {}); return; }
+    if (synth && theme) {
+      if (synth.running) { synth.stop(); out.playing = false; }
+      else { synth.start(theme); out.playing = true; }
+    }
+  }
+
+  function setMuted(m) {
+    out.muted = m;
+    if (outGain) outGain.gain.value = m ? 0 : 1;   // analyser is upstream, visuals keep reacting
+  }
+
+  function stop() { detach(); out.running = false; }
+
+  /* ---- analysis ---------------------------------------------------- */
 
   function binRange(lo, hi) {
     const nyq = ctx.sampleRate / 2, n = analyser.frequencyBinCount;
@@ -34,41 +154,6 @@ GV.Audio = (function () {
     return (b >= a) ? s / (b - a + 1) / 255 : 0;
   }
 
-  async function start() {
-    if (out.running) return;
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-    });
-    const src = ctx.createMediaStreamSource(stream);
-    analyser = ctx.createAnalyser();
-    analyser.fftSize = FFT;
-    analyser.smoothingTimeConstant = 0.6;
-    src.connect(analyser);
-    freq = new Uint8Array(analyser.frequencyBinCount);
-    time = new Float32Array(analyser.fftSize);
-    prevMag = new Float32Array(analyser.frequencyBinCount);
-    out.running = true; out.demo = demo = false;
-    lastT = performance.now() / 1000;
-  }
-
-  function stop() {
-    if (stream) stream.getTracks().forEach(t => t.stop());
-    if (ctx) ctx.close();
-    ctx = analyser = stream = null;
-    out.running = false;
-  }
-
-  function startDemo() {
-    if (out.running) stop();
-    demo = true; out.demo = true; out.running = true;
-    demoT = 0; lastT = performance.now() / 1000;
-  }
-
-  function setPrior(b) { prior = b || 120; }
-
-  /* Fold a tempo into [MIN_BPM, MAX_BPM] then toward the song's reference tempo,
-     which is what kills the usual half/double-time lock. */
   function foldToPrior(b) {
     while (b < MIN_BPM) b *= 2;
     while (b > MAX_BPM) b /= 2;
@@ -85,7 +170,6 @@ GV.Audio = (function () {
   function estimateTempo() {
     const n = Math.min(fluxFilled, HIST);
     if (n < 180) return;
-    // unwrap ring buffer, mean-remove
     const e = new Float32Array(n);
     let mean = 0;
     for (let i = 0; i < n; i++) { e[i] = fluxHist[(fluxIdx - n + i + HIST) % HIST]; mean += e[i]; }
@@ -100,9 +184,9 @@ GV.Audio = (function () {
       for (let i = 0; i + lag < n; i++) { s += e[i] * e[i + lag]; na += e[i] * e[i]; nb += e[i + lag] * e[i + lag]; }
       const d = Math.sqrt(na * nb);
       if (d <= 0) continue;
-      let score = s / d;
-      score *= 1 - 0.25 * Math.abs(Math.log2((60 / (lag * frameDt)) / prior)); // mild prior tilt
-      if (score > bestScore) { bestScore = score; bestLag = lag; }
+      let sc = s / d;
+      sc *= 1 - 0.25 * Math.abs(Math.log2((60 / (lag * frameDt)) / prior));
+      if (sc > bestScore) { bestScore = sc; bestLag = lag; }
     }
     if (!bestLag) return;
     const cand = foldToPrior(60 / (bestLag * frameDt));
@@ -111,45 +195,15 @@ GV.Audio = (function () {
     period = 60 / bpm;
   }
 
-  let tempoTick = 0;
-
   function update() {
     const now = performance.now() / 1000;
     const dt = Math.min(0.1, Math.max(1 / 240, now - lastT));
     lastT = now;
     frameDt = frameDt * 0.95 + dt * 0.05;
-
     if (!out.running) return out;
 
-    if (demo) {
-      demoT += dt;
-      period = 60 / prior; bpm = prior; bpmConf = 1;
-      const ph = (demoT % period) / period;
-      const kick = Math.exp(-ph * 14);
-      const snare = Math.exp(-(((demoT % (period * 2)) / period - 1 + 2) % 2) * 10);
-      out.bass = 0.25 + 0.7 * kick;
-      out.lowMid = 0.2 + 0.4 * kick + 0.25 * Math.abs(Math.sin(demoT * 1.7));
-      out.mid = 0.18 + 0.5 * snare + 0.2 * Math.abs(Math.sin(demoT * 2.3));
-      out.high = 0.12 + 0.35 * snare + 0.15 * Math.abs(Math.sin(demoT * 5.1));
-      out.level = (out.bass + out.mid) * 0.45;
-      out.flux = kick;
-      for (let i = 0; i < out.spectrum.length; i++) {
-        const f = i / out.spectrum.length;
-        out.spectrum[i] = Math.max(0, (1 - f) * (0.4 + 0.6 * kick) + 0.25 * Math.sin(demoT * 3 + i * 0.4) * (1 - f));
-      }
-      for (let i = 0; i < out.waveform.length; i++) {
-        const t = i / out.waveform.length;
-        out.waveform[i] = 0.6 * Math.sin(t * 28 + demoT * 9) * (0.3 + 0.7 * kick)
-          + 0.25 * Math.sin(t * 71 + demoT * 17) * snare;
-      }
-      beatPhase = ph;
-      pulse = Math.max(pulse * Math.exp(-dt * 7), kick);
-      out.bpm = bpm; out.bpmConf = 1; out.beatPhase = beatPhase; out.pulse = pulse;
-      return out;
-    }
-
     analyser.getByteFrequencyData(freq);
-    analyser.getFloatTimeDomainData(time);
+    analyser.getFloatTimeDomainData(timeBuf);
 
     const [b0, b1] = binRange(30, 160);
     const [m0, m1] = binRange(160, 600);
@@ -162,10 +216,9 @@ GV.Audio = (function () {
     out.high += (avg(freq, h0, h1) - out.high) * k;
 
     let rms = 0;
-    for (let i = 0; i < time.length; i++) rms += time[i] * time[i];
-    out.level += (Math.min(1, Math.sqrt(rms / time.length) * 4) - out.level) * k;
+    for (let i = 0; i < timeBuf.length; i++) rms += timeBuf[i] * timeBuf[i];
+    out.level += (Math.min(1, Math.sqrt(rms / timeBuf.length) * 4) - out.level) * k;
 
-    // spectral flux, weighted to the percussive low-mid where the kit lives
     let f = 0;
     for (let i = b0; i <= h1; i++) {
       const v = freq[i] / 255;
@@ -179,7 +232,6 @@ GV.Audio = (function () {
     fluxIdx = (fluxIdx + 1) % HIST;
     fluxFilled++;
 
-    // adaptive onset threshold over the last ~1s
     const w = Math.min(fluxFilled, 64);
     let mu = 0, sd = 0;
     for (let i = 0; i < w; i++) mu += fluxHist[(fluxIdx - 1 - i + HIST) % HIST];
@@ -194,7 +246,6 @@ GV.Audio = (function () {
       beatPhase = (beatPhase + dt / period) % 1;
       if (isOnset) {
         lastOnset = now;
-        // nudge phase toward the onset instead of snapping, so a stray hit can't derail it
         const err = beatPhase > 0.5 ? beatPhase - 1 : beatPhase;
         beatPhase -= err * 0.25;
         if (beatPhase < 0) beatPhase += 1;
@@ -207,12 +258,13 @@ GV.Audio = (function () {
       const src = Math.floor(Math.pow(i / out.spectrum.length, 1.7) * (analyser.frequencyBinCount - 1));
       out.spectrum[i] = freq[src] / 255;
     }
-    const step = Math.floor(time.length / out.waveform.length);
-    for (let i = 0; i < out.waveform.length; i++) out.waveform[i] = time[i * step];
+    const step = Math.floor(timeBuf.length / out.waveform.length);
+    for (let i = 0; i < out.waveform.length; i++) out.waveform[i] = timeBuf[i * step];
 
     out.bpm = bpm; out.bpmConf = bpmConf; out.beatPhase = beatPhase; out.pulse = pulse;
     return out;
   }
 
-  return { start, stop, startDemo, update, setPrior, data: out };
+  return { useMic, useSynth, useTrack, setSong, togglePlay, setMuted, stop, update, data: out,
+           onEnded: cb => { endedCb = cb; } };
 })();

@@ -36,14 +36,20 @@ void main(){
   float f = uOscFreq * (1.0 + uMid * 1.1);
   float o1 = sin(k.x * f + uTime * 2.1 + uHigh * 6.0);
   float o2 = sin(k.y * f * 0.66 - uTime * 1.4 + n * 3.0);
+  // k.x and k.y both collapse to zero at the centre, so a purely cartesian
+  // oscillator leaves a hole there for the feedback to smear into. A radial
+  // ring term keeps the middle of the frame as detailed as the edges.
+  float o3 = sin(r * f * 1.35 - uTime * 1.9 + uBass * 5.0);
   float sharp = 7.0 - uLevel * 3.5 - uPulse * 1.5;
   float e1 = pow(max(0.0, o1), sharp);
   float e2 = pow(max(0.0, o2), sharp);
+  float e3 = pow(max(0.0, o3), sharp);
 
   vec3 col = uC0 * 0.22
            + uC1 * e1
            + uC2 * e1 * e2 * 1.7
-           + uC1 * e2 * 0.35;
+           + uC1 * e2 * 0.35
+           + uC2 * e3 * 0.55;
 
   col *= smoothstep(1.25, 0.04, r);          // hard falloff to true black
   col *= 0.30 + 1.25 * uLevel;

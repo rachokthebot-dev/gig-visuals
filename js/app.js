@@ -5,9 +5,12 @@
 
   let song = 0;
   let override = null;          // forced engine, or null to follow the theme
+  let source = 'mic';           // 'mic' | 'track' | 'synth'
   let vizzes = {};
   let active = null;
   let dpr = 1, started = false, t0 = 0;
+
+  /* ---- visualizers -------------------------------------------------- */
 
   function make(kind) {
     if (vizzes[kind]) return vizzes[kind];
@@ -39,6 +42,8 @@
     for (const k in vizzes) vizzes[k].resize(w, h);
   }
 
+  /* ---- set list ------------------------------------------------------ */
+
   function renderSetlist() {
     const ol = $('setlist-items');
     ol.innerHTML = '';
@@ -62,24 +67,61 @@
     song = (i + T.length) % T.length;
     const th = T[song];
     document.body.style.background = th.bg;
-    GV.Audio.setPrior(th.bpm);
+    GV.Audio.setSong(th);
+    if (started && source === 'track') GV.Audio.useTrack(GV.Tracks.urlFor(song), th);
     $('h-index').textContent = song + 1;
     $('h-title').textContent = th.title;
     $('h-artist').textContent = th.artist;
     show(currentKind());
     active.reset(th);
     renderSetlist();
+    syncTransport();
     wake();
   }
 
-  /* --- hud auto-dim --- */
-  let idle = 0;
+  /* ---- transport ------------------------------------------------------ */
+
+  function syncTransport() {
+    const d = GV.Audio.data;
+    $('c-play').innerHTML = d.playing ? '&#9646;&#9646;' : '&#9654;';
+    $('c-play').hidden = source === 'mic';
+    $('c-mute').hidden = source === 'mic';
+    $('c-mute').innerHTML = d.muted ? '&#128263;' : '&#9834;';
+    $('c-mute').classList.toggle('off', d.muted);
+  }
+
+  function setSetlist(open) {
+    $('setlist').hidden = !open;
+    document.body.classList.toggle('setlist-open', open);
+  }
+
+  function toLanding() {
+    started = false;
+    GV.Audio.stop();
+    $('hud').hidden = true;
+    setSetlist(false);
+    $('boot').hidden = false;
+    $('boot-err').hidden = true;
+  }
+
+  $('c-back').onclick = toLanding;
+  $('c-prev').onclick = () => select(song - 1);
+  $('c-next').onclick = () => select(song + 1);
+  $('c-play').onclick = () => { GV.Audio.togglePlay(); syncTransport(); wake(); };
+  $('c-mute').onclick = () => { GV.Audio.setMuted(!GV.Audio.data.muted); syncTransport(); wake(); };
+
+  /* ---- hud auto-dim --------------------------------------------------- */
+
+  let idle = 0, lastFrame = 0;
   function wake() { idle = 0; $('hud').classList.remove('dim'); }
+
   addEventListener('mousemove', wake);
   addEventListener('touchstart', wake, { passive: true });
 
-  /* --- loop --- */
+  /* ---- loop ----------------------------------------------------------- */
+
   function frame() {
+    if (!started) return;
     requestAnimationFrame(frame);
     const au = GV.Audio.update();
     const th = T[song];
@@ -88,30 +130,35 @@
     show(currentKind());
     active.draw(au, th, t);
 
-    const bpm = au.bpm ? Math.round(au.bpm) : 0;
-    $('h-bpm').textContent = bpm || '--';
+    $('h-bpm').textContent = au.bpm ? Math.round(au.bpm) : '--';
     $('h-conf').style.width = Math.round(au.bpmConf * 100) + '%';
     const dot = $('h-beat');
-    const s = 0.6 + au.pulse * 1.1;
-    dot.style.transform = 'scale(' + s.toFixed(2) + ')';
+    dot.style.transform = 'scale(' + (0.6 + au.pulse * 1.1).toFixed(2) + ')';
     dot.style.opacity = (0.15 + au.pulse * 0.85).toFixed(2);
     dot.style.background = th.palette[2];
 
-    idle += 1 / 60;
+    // real elapsed seconds, not an assumed 60fps
+    const nowS = performance.now() / 1000;
+    idle += Math.min(0.25, lastFrame ? nowS - lastFrame : 0);
+    lastFrame = nowS;
     if (idle > 4 && $('setlist').hidden) $('hud').classList.add('dim');
   }
 
-  /* --- keys --- */
+  /* ---- keys ------------------------------------------------------------ */
+
   addEventListener('keydown', e => {
     if (!started) return;
     const k = e.key.toLowerCase();
+    if (k === 'escape') { toLanding(); return; }
     if (k === 'arrowright' || k === ' ') { select(song + 1); e.preventDefault(); }
     else if (k === 'arrowleft') select(song - 1);
     else if (k === '1') { override = 'hydra'; wake(); }
     else if (k === '2') { override = 'milkdrop'; wake(); }
     else if (k === '3') { override = 'flow'; wake(); }
     else if (k === '0') { override = null; wake(); }
-    else if (k === 's') $('setlist').hidden = !$('setlist').hidden;
+    else if (k === 'p') { GV.Audio.togglePlay(); syncTransport(); wake(); }
+    else if (k === 'm') { GV.Audio.setMuted(!GV.Audio.data.muted); syncTransport(); wake(); }
+    else if (k === 's') setSetlist($('setlist').hidden);
     else if (k === 'h') $('hud').hidden = !$('hud').hidden;
     else if (k === 'f') {
       if (document.fullscreenElement) document.exitFullscreen();
@@ -120,49 +167,95 @@
   });
   addEventListener('resize', resizeAll);
 
-  /* --- boot --- */
-  let useDemo = false;
+  /* ---- source picking --------------------------------------------------- */
+
+  const NOTES = {
+    mic: 'The gig setting — listens to the room and reacts to whatever you play.',
+    track: 'Plays your own files, analysed exactly like the mic would be.',
+    synth: 'A drum, bass and guitar bed per song, at that song’s tempo and key. Nothing to load.'
+  };
+
+  function renderTrackList() {
+    const ul = $('track-list');
+    ul.innerHTML = '';
+    T.forEach((th, i) => {
+      const name = GV.Tracks.nameFor(i);
+      const li = document.createElement('li');
+      li.innerHTML = '<span class="' + (name ? 'ok' : 'no') + '">' + (name ? '&#10003;' : '&ndash;') + '</span>' +
+        '<span class="ti"></span><span class="fn"></span>';
+      li.querySelector('.ti').textContent = th.title;
+      li.querySelector('.fn').textContent = name || 'demo bed';
+      ul.appendChild(li);
+    });
+  }
+
+  function setSource(s) {
+    source = s;
+    for (const id of ['mic', 'track', 'synth']) {
+      const b = $('src-' + id);
+      b.classList.toggle('on', id === s);
+      b.setAttribute('aria-pressed', String(id === s));
+    }
+    $('src-note').textContent = NOTES[s];
+    $('track-panel').hidden = s !== 'track';
+    $('boot-err').hidden = true;
+    if (s === 'track') renderTrackList();
+  }
+
+  $('src-mic').onclick = () => setSource('mic');
+  $('src-track').onclick = () => setSource('track');
+  $('src-synth').onclick = () => setSource('synth');
+
+  $('file-input').onchange = e => {
+    const n = GV.Tracks.fromFiles(e.target.files, T);
+    renderTrackList();
+    const err = $('boot-err');
+    if (!n) { err.hidden = false; err.textContent = 'No file names matched a song in the set.'; }
+    else err.hidden = true;
+  };
+
+  /* ---- boot -------------------------------------------------------------- */
 
   function begin(engine) {
     started = true;
     t0 = performance.now();
     $('boot').hidden = true;
     $('hud').hidden = false;
-    $('setlist').hidden = false;
+    setSetlist(true);
     $('h-total').textContent = T.length;
-    $('h-src').textContent = useDemo ? 'PREVIEW' : 'MIC';
-    $('h-src').classList.toggle('demo', useDemo);
+    $('h-src').textContent = source === 'mic' ? 'MIC' : source === 'track' ? 'TRACKS' : 'DEMO';
+    $('h-src').classList.toggle('demo', source !== 'mic');
     resizeAll();
-    select(0);
+    song = 0;
     override = engine === 'auto' ? null : engine;
-    show(currentKind());
+    select(0);
     frame();
   }
 
-  function setSource(demo) {
-    useDemo = demo;
-    $('src-mic').classList.toggle('on', !demo);
-    $('src-demo').classList.toggle('on', demo);
-    $('src-mic').setAttribute('aria-pressed', String(!demo));
-    $('src-demo').setAttribute('aria-pressed', String(demo));
-    $('boot-err').hidden = true;
+  async function openSource() {
+    const th = T[0];
+    if (source === 'mic') return GV.Audio.useMic();
+    if (source === 'synth') return GV.Audio.useSynth(th);
+    return GV.Audio.useTrack(GV.Tracks.urlFor(0), th);
   }
-  $('src-mic').onclick = () => setSource(false);
-  $('src-demo').onclick = () => setSource(true);
 
   document.querySelectorAll('.engine').forEach(btn => {
     btn.onclick = async () => {
-      const engine = btn.dataset.engine;
-      if (useDemo) { GV.Audio.startDemo(); return begin(engine); }
       try {
-        await GV.Audio.start();
-        begin(engine);
+        await openSource();
+        begin(btn.dataset.engine);
       } catch (err) {
         const e = $('boot-err');
         e.hidden = false;
         e.textContent = 'Microphone unavailable (' + (err && err.name || err) +
-          '). Allow access, or switch to Preview above.';
+          '). Allow access, or pick another source above.';
       }
     };
   });
+
+  // a track running out moves the set on, the way it would live
+  GV.Audio.onEnded(() => { if (started && source === 'track') select(song + 1); });
+
+  setSource('mic');
+  GV.Tracks.fromFolder(T).then(n => { if (n) { setSource('track'); renderTrackList(); } });
 })();
