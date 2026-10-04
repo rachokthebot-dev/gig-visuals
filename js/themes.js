@@ -145,6 +145,8 @@ GV.THEMES = [
   }
 ];
 
+GV.SET_NAME = 'Block Party';
+GV.SET_TAGLINE = 'Live visuals, driven by the room';
 GV.ART_VARIANTS = 3;
 
 GV.ENGINES = {

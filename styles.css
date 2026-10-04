@@ -20,6 +20,14 @@ body {
 }
 #boot[hidden] { display: none; }
 .boot-card { width: min(62rem, 100%); margin: auto; text-align: center; }
+.setnav { display: flex; gap: .4rem; justify-content: center; margin: 0 0 1.6rem; }
+.setnav a {
+  font-size: .76rem; letter-spacing: .06em; text-decoration: none;
+  padding: .35rem .85rem; border-radius: 999px;
+  border: 1px solid #202a36; color: #7b8695; transition: all .15s;
+}
+.setnav a:hover { border-color: #3c4b5c; color: #b6c2d0; }
+.setnav a.on { background: #1b2733; border-color: #2d3d4e; color: #e9eff5; }
 .boot-card h1 {
   margin: 0; font-size: clamp(2.6rem, 9vw, 5.5rem); font-weight: 800;
   letter-spacing: -0.045em; line-height: 0.92;

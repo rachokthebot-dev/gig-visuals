@@ -20,7 +20,8 @@ const SECONDS = 30;
 
 const sandbox = {}; sandbox.window = sandbox;
 vm.createContext(sandbox);
-vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/themes.js'), 'utf8'), sandbox);
+const THEMES_FILE = process.argv[2] || 'js/themes.js';
+vm.runInContext(fs.readFileSync(path.join(ROOT, THEMES_FILE), 'utf8'), sandbox);
 const THEMES = sandbox.GV.THEMES;
 
 const freq = m => 440 * Math.pow(2, (m - 69) / 12);

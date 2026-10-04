@@ -313,6 +313,15 @@
   // a track running out moves the set on, the way it would live
   GV.Audio.onEnded(() => { if (started && source === 'track') select(song + 1); });
 
+  // branding comes from the loaded theme file, so both set lists share this page
+  document.title = (GV.SET_NAME || 'Block Party') + ' — Gig Visuals';
+  $('set-name').textContent = GV.SET_NAME || 'Block Party';
+  $('set-tagline').textContent = GV.SET_TAGLINE || 'Live visuals, driven by the room';
+  const words = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',
+                 'eleven','twelve','thirteen','fourteen','fifteen','sixteen'];
+  const sc = $('song-count');
+  if (sc) sc.textContent = words[T.length] || String(T.length);
+
   setSource('mic');
   setArtStatus();
   GV.Tracks.fromFolder(T).then(n => { if (n) { setSource('track'); renderTrackList(); } });

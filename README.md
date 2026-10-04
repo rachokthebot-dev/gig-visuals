@@ -1,9 +1,29 @@
-# Block Party — Gig Visuals
+# Gig Visuals
 
 Live visuals for the Block Party set, driven by the room. Point a laptop at the PA,
 pick an engine, hit full screen. No click track, no MIDI, nothing to cue.
 
-**→ https://rachokthebot-dev.github.io/gig-visuals/**
+Two set lists, each its own page:
+
+- **Block Party** → https://rachokthebot-dev.github.io/gig-visuals/
+- **Anton 10.2026** → https://rachokthebot-dev.github.io/gig-visuals/anton.html
+
+A switcher at the top of each landing page moves between them. Both share the same
+engines, audio analysis and build tools; only the theme file differs
+(`js/themes.js` vs `js/themes-anton.js`), and the page reads its name, tagline and
+song count from whichever one loaded.
+
+## Anton 10.2026
+
+Fourteen Russian rock songs, read straight out of the Shreddy folder of the same name
+(`apps/shreddy/dev.db`). Unlike the Block Party set, Shreddy already holds a **measured**
+BPM and musical key for every track, so the tempo prior is exact rather than estimated and
+the demo beds sit in each song's real key.
+
+Where Block Party runs dark, this set is built deliberately bright — open sky, spring
+light, gold and brass. Each song's scene comes from what it is about: a railway at golden
+hour for *Дополнительный 38й*, light through glass for *Стаканы*, Earth from orbit with
+the sun rising over the limb for *Трава у дома*.
 
 Open it on the laptop that drives the projector, allow the microphone, press `F`.
 No install, no build step, no dependencies — it also runs offline from a local copy.
