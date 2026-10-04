@@ -98,6 +98,10 @@ GV.VizThree = function (canvas) {
     reveal *= Math.exp(-dt / 1.10);
     if (reveal < 0.002) reveal = 0;
 
+    const P = GV.Art.level;
+    // keep the environment map (reflections stay abstract either way) but drop
+    // the photograph as a visible backdrop when it should read as lighting
+    scene.background = (envTex && P.background) ? envTex : null;
     const p = Object.assign({}, GV.VizThree.DEFAULTS, th.three);
     buildShape(p.shape);
 
@@ -134,7 +138,7 @@ GV.VizThree = function (canvas) {
     camera.position.z = 4.2 - au.pulse * 0.30;
     camera.lookAt(0, 0, 0);
 
-    renderer.toneMappingExposure = 0.95 + au.level * 0.7 + reveal * 0.5;
+    renderer.toneMappingExposure = 0.95 + au.level * 0.7 + reveal * P.reveal * 0.5;
     renderer.render(scene, camera);
   }
 

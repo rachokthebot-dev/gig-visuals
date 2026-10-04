@@ -9,7 +9,7 @@ window.GV = window.GV || {};
 
 GV.SET_NAME = 'Anton 10.2026';
 GV.SET_TAGLINE = 'Russian rock · 14 songs';
-GV.ART_VARIANTS = 2;
+GV.ART_VARIANTS = 2;   // bumped to 3 once the third variant is generated
 
 GV.THEMES = [
   {

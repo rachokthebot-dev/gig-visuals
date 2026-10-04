@@ -16,6 +16,7 @@ uniform sampler2D uPrev;
 uniform sampler2D uImg;
 uniform float uImgAmt, uImgReveal;
 uniform vec2  uImgScale;
+uniform float uImgFlat;   // 1 = legible cover-fit, 0 = mirror-tiled and abstract
 
 void main(){
   vec2 fuv = gl_FragCoord.xy / uRes;
@@ -66,7 +67,7 @@ void main(){
     vec2 kv = abs(fract(k * uImgScale * 0.5) * 2.0 - 1.0);
     vec3 imgKal = texture2D(uImg, kv).rgb;
 
-    vec3 img = mix(imgFlat, imgKal, 0.35);
+    vec3 img = mix(imgKal, imgFlat, uImgFlat);
     float m = clamp(uImgAmt * (0.48 + uImgReveal * 0.45 + uPulse * 0.20), 0.0, 0.94);
     col = mix(col, img * (0.90 + e1 * 0.8 + uPulse * 0.4), m);
   }
@@ -107,7 +108,7 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
   const U = {};
   for (const n of ['uRes', 'uTime', 'uBass', 'uMid', 'uHigh', 'uPulse', 'uBeat', 'uLevel',
     'uC0', 'uC1', 'uC2', 'uKaleid', 'uOscFreq', 'uModAmt', 'uRotSpeed', 'uFeedback', 'uPrev',
-    'uImg', 'uImgAmt', 'uImgReveal', 'uImgScale']) {
+    'uImg', 'uImgAmt', 'uImgReveal', 'uImgScale', 'uImgFlat']) {
     U[n] = gl.getUniformLocation(prog, n);
   }
   const Uc = { uTex: gl.getUniformLocation(copy, 'uTex'), uRes: gl.getUniformLocation(copy, 'uRes') };
@@ -124,6 +125,7 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
     reveal *= Math.exp(-dt / 1.10);
     if (reveal < 0.002) reveal = 0;
     if (G.videoReady(imgSrc)) G.upload(gl, imgTex, imgSrc);
+    const P = GV.Art.level;
     const p = Object.assign({}, GV.VizHydra.DEFAULTS, th.hydra);
     const c = th.palette.map(GV.hexToRgb);
     gl.viewport(0, 0, W, H);
@@ -151,8 +153,9 @@ void main(){ gl_FragColor = texture2D(uTex, gl_FragCoord.xy/uRes); }`;
     gl.bindTexture(gl.TEXTURE_2D, b.tex);
     gl.uniform1i(U.uPrev, 0);
 
-    gl.uniform1f(U.uImgAmt, imgAmt);
-    gl.uniform1f(U.uImgReveal, reveal);
+    gl.uniform1f(U.uImgAmt, imgAmt * P.mix);
+    gl.uniform1f(U.uImgReveal, reveal * P.reveal);
+    gl.uniform1f(U.uImgFlat, P.flatBias);
     const ca = W / H;
     gl.uniform2f(U.uImgScale, ca > imgAspect ? 1 : ca / imgAspect,
                               ca > imgAspect ? imgAspect / ca : 1);

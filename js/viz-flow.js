@@ -59,7 +59,8 @@ GV.VizFlow = function (canvas) {
     ctx.globalAlpha = 1;
 
     // after the trail wash, before the particles, so they ride over it
-    if (image) drawCover(image, Math.min(0.90, 0.18 + reveal * 0.6 + au.pulse * 0.12));
+    const P = GV.Art.level;
+    if (image) drawCover(image, Math.min(0.90, (0.18 + reveal * P.reveal * 0.6 + au.pulse * 0.12) * P.mix));
 
     const cx = W / 2, cy = H / 2;
     const beat = au.beatPhase < lastPhase;

@@ -96,6 +96,7 @@ void main(){
     reveal *= Math.exp(-dt / 1.10);
     if (reveal < 0.002) reveal = 0;
     if (G.videoReady(imgSrc)) G.upload(gl, imgTex, imgSrc);
+    const P = GV.Art.level;
 
     const p = Object.assign({}, GV.VizFractal.DEFAULTS, th.fractal);
     const c = th.palette.map(GV.hexToRgb);
@@ -123,8 +124,8 @@ void main(){
 
     const ca = W / H;
     gl.uniform2f(U.uImgScale, ca > imgAspect ? 1 : ca / imgAspect, ca > imgAspect ? imgAspect / ca : 1);
-    gl.uniform1f(U.uImgAmt, imgAmt);
-    gl.uniform1f(U.uImgReveal, reveal);
+    gl.uniform1f(U.uImgAmt, imgAmt * P.mix);
+    gl.uniform1f(U.uImgReveal, reveal * P.reveal);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, imgTex || blankTex);
     gl.uniform1i(U.uImg, 0);

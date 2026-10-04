@@ -116,6 +116,17 @@
     }, 9000);
   }
 
+  let shownPresence = null;
+  function syncPresence() {
+    const L = GV.Art.level;
+    if (L.id === shownPresence) return;
+    shownPresence = L.id;
+    const el = $('h-presence');
+    el.textContent = L.label;
+    el.classList.toggle('texture', L.id === 'texture');
+    el.classList.toggle('showcase', L.id === 'showcase');
+  }
+
   function setArtStatus() {
     const n = GV.Art.localCount();
     $('art-status').textContent = n ? n + ' of ' + T.length + ' from your images' : 'generated set';
@@ -182,6 +193,7 @@
 
     // real elapsed seconds, not an assumed 60fps
     const nowS = performance.now() / 1000;
+    syncPresence();
     idle += Math.min(0.25, lastFrame ? nowS - lastFrame : 0);
     lastFrame = nowS;
     if (idle > 4 && $('setlist').hidden) $('hud').classList.add('dim');
@@ -204,6 +216,7 @@
     else if (k === 'p') { GV.Audio.togglePlay(); syncTransport(); wake(); }
     else if (k === 'm') { GV.Audio.setMuted(!GV.Audio.data.muted); syncTransport(); wake(); }
     else if (k === 'i') { GV.Art.enabled = !GV.Art.enabled; applyArt(); wake(); }
+    else if (k === 'v') { GV.Art.cyclePresence(); wake(); }
     else if (k === 's') setSetlist($('setlist').hidden);
     else if (k === 'h') $('hud').hidden = !$('hud').hidden;
     else if (k === 'f') {
@@ -278,6 +291,7 @@
     $('h-src').textContent = source === 'mic' ? 'MIC' : source === 'track' ? 'TRACKS' : 'DEMO';
     $('h-src').classList.toggle('demo', source !== 'mic');
     resizeAll();
+    syncPresence();
     song = 0;
     override = engine === 'auto' ? null : engine;
     select(0);

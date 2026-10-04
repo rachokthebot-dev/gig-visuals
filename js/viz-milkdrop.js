@@ -140,6 +140,7 @@ void main(){
     reveal *= Math.exp(-dt / 1.10);
     if (reveal < 0.002) reveal = 0;
     if (G.videoReady(imgSrc)) G.upload(gl, imgTex, imgSrc);
+    const P = GV.Art.level;
     const p = Object.assign({}, GV.VizMilkdrop.DEFAULTS, th.milkdrop);
     const c = th.palette.map(GV.hexToRgb);
     gl.viewport(0, 0, W, H);
@@ -168,8 +169,8 @@ void main(){
     const sx = canvasAspect > imgAspect ? 1 : canvasAspect / imgAspect;
     const sy = canvasAspect > imgAspect ? imgAspect / canvasAspect : 1;
     gl.uniform2f(Uw.uImgScale, sx, sy);
-    gl.uniform1f(Uw.uImgAmt, imgAmt);
-    gl.uniform1f(Uw.uImgReveal, reveal);
+    gl.uniform1f(Uw.uImgAmt, imgAmt * P.mix);
+    gl.uniform1f(Uw.uImgReveal, reveal * P.reveal);
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, imgTex || blankTex);
     gl.uniform1i(Uw.uImg, 1);

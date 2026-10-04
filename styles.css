@@ -160,6 +160,9 @@ body.setlist-open #hud { padding-right: calc(var(--setlist-w) + 1.2rem); }
   border: 1px solid rgba(255,255,255,.16); color: #b9c3cf; white-space: nowrap;
 }
 .src { border-color: rgba(43,180,200,.5); color: #2bb4c8; }
+.presence { border-color: rgba(255,255,255,.22); color: #93a0b0; }
+.presence.texture  { border-color: rgba(120,200,160,.5); color: #7fd3a8; }
+.presence.showcase { border-color: rgba(255,170,70,.55); color: #ffb347; }
 .src.demo { border-color: rgba(255,106,0,.55); color: #ff8c33; }
 
 /* ---- setlist ---- */
